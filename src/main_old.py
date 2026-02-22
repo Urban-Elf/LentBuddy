@@ -1,10 +1,10 @@
 from datetime import datetime, date
 import calendar
-import util
 import time
 import os
 import random
 import sys
+from . import util
 
 WINDOW_WIDTH = 50
 

@@ -19,3 +19,6 @@ EVIL_MESSAGES = [
     "Eh, like, don't worry about it. You can just do it tomorrow, or maybe the day after. It’s not like it’s important or anything.",
     "You know, you could just do something else instead. Like, maybe watch a movie or something. That would be way more fun.",
 ]
+
+def should_do_temptation(rng):
+    return rng.random() < 0.3
