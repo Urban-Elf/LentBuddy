@@ -427,6 +427,10 @@ def safe_move(stdscr, y, x):
     except curses.error:
         pass  # Ignore if curses still complains (rare)
 
+def safe_clear_line(stdscr, y, x=0):
+    safe_move(stdscr, y, x)
+    stdscr.clrtoeol()
+
 def safe_sleep(stdscr, seconds):
     """
     Sleeps for `seconds` while flushing any keypresses in the buffer.

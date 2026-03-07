@@ -110,8 +110,7 @@ def roll_screen_curses(stdscr, everyday_list):
     for i in range(RNG.randint(3, 4 if not should_show_easter_egg_0 else 3)):
         for j in range(3):
             if should_show_easter_egg_0 and i < 2:
-                util.safe_move(stdscr, 4, 0)
-                stdscr.clrtoeol()
+                util.safe_clear_line(stdscr, 4, 0)
             util.safe_addstr(stdscr, 4, (j*2) + 1, "o" if j % 2 == 0 else "O")  # Add some "rolling" animation
             stdscr.refresh()
             util.safe_sleep(stdscr, 0.6)
@@ -123,14 +122,12 @@ def roll_screen_curses(stdscr, everyday_list):
                 util.safe_addstr(stdscr, 5, 9, "^ 100% legit", curses.A_ITALIC)
                 stdscr.refresh()
                 util.safe_sleep(stdscr, 1.3)
-        util.safe_move(stdscr, 4, 0)
-        stdscr.clrtoeol()
+        util.safe_clear_line(stdscr, 4, 0)
         stdscr.refresh()
         util.safe_sleep(stdscr, 0.6)
 
     if should_show_easter_egg_0:
-        util.safe_move(stdscr, 5, 0)
-        stdscr.clrtoeol()
+        util.safe_clear_line(stdscr, 5, 0)
         stdscr.refresh()
 
     util.safe_sleep(stdscr, 0.6)
@@ -154,26 +151,22 @@ def roll_screen_curses(stdscr, everyday_list):
         while True:
             if set_insisted:
                 insisted = True
-            util.safe_move(stdscr, 4, 0)
-            stdscr.clrtoeol()
+            util.safe_clear_line(stdscr, 4, 0)
             util.safe_addstr(stdscr, 4, 0, "Wait, how many penances did you want?" if count == -1 else f"Still cool with {count} penances? ['d' to continue].")
-            util.safe_move(stdscr, 5, 0)
-            stdscr.clrtoeol()
+            util.safe_clear_line(stdscr, 5, 0)
             s = util.curses_input(stdscr, "> ", 5, 0)
             if s == "d" and count != -1:
                 break
             try:
                 new_count = int(s)
                 if new_count < 1:
-                    util.safe_move(stdscr, 4, 0)
-                    stdscr.clrtoeol()
+                    util.safe_clear_line(stdscr, 4, 0)
                     util.safe_addstr(stdscr, 4, 0,"You're worse than us")
                     stdscr.refresh()
                     util.safe_sleep(stdscr, 1.1)
                     continue
                 elif new_count < 2:
-                    util.safe_move(stdscr, 4, 0)
-                    stdscr.clrtoeol()
+                    util.safe_clear_line(stdscr, 4, 0)
                     util.safe_addstr(stdscr, 4, 0, "At least two, come on." if not insisted else "Alright, suit yourself.")
                     stdscr.refresh()
                     set_insisted = True
@@ -184,16 +177,14 @@ def roll_screen_curses(stdscr, everyday_list):
                 ls.get_instance().set_property("count", count)
                 break
             except ValueError:
-                util.safe_move(stdscr, 4, 0)
-                stdscr.clrtoeol()
+                util.safe_clear_line(stdscr, 4, 0)
                 util.safe_addstr(stdscr, 4, 0, "Dude, you can't be serious right now.")
                 stdscr.refresh()
                 util.safe_sleep(stdscr, 1.4)
                 continue
 
     selected = determine_penances(everyday_list, count, RNG)
-    util.safe_move(stdscr, 4, 0)
-    stdscr.clrtoeol()
+    util.safe_clear_line(stdscr, 4, 0)
     end = [
         "Your penances for today are:",
         "Today's penances are:"
@@ -365,23 +356,121 @@ def show_welcome_curses(stdscr, extra_lines: list[str]=None, line_delay=0.05):
             break
 
 def personal_stuff_curses(stdscr):
-    while True:
+    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+
+    questions = [
+        {
+            "prompt": "What's your name?",
+            "ls_key": "name",
+            "type": "input",
+            "filter": lambda s: not util.is_name_silly(s) and len(s) <= 20 and len(s) >= 2,
+            "error": "That's a silly name!",
+            "success": "=0Welcome to LentBuddy,= #0# =0%s!= #1# =0Press any key to continue.="
+        },
+        {
+            "prompt": "What's your gender?",
+            "ls_key": "gender",
+            "type": "choice",
+            "options": [
+                {"id": "male", "text": "Male"},
+                {"id": "female", "text": "Female"},
+                {"id": "abstain", "text": "Ain't no way I'm answering random questions in a program I got off Github."}
+            ],
+            "success": {
+                "2": {"text": "=0Welp.= #1# =0Press any key to continue.=", "good": False, "bad_text": "=1Ha,= #2# =0did you really think I,= #2# =0the developer,= #2# =0was going to let you off that easily?= #1#"},
+                "default": {"text": "=0Choice saved!= #1# =0Press any key to continue.=", "good": True}
+            }
+        }
+    ]
+
+    spec = {"word_delays":[0.05], "char_delays":[0.03, 0.02], "br_delays":[0.09, 0.9, 0.15]}
+
+    q_index = 0
+    y = 0
+
+    while q_index < len(questions):
         stdscr.clear()
-        util.safe_addstr(stdscr, 0, 0, "What's your name?", curses.color_pair(4))
+        q_data = questions[q_index]
+
+        util.safe_addstr(stdscr, 0, 0, "Introduce yourself!", curses.color_pair(4))
         util.safe_addstr(stdscr, 1, 0, " ")
-        util.safe_addstr(stdscr, 2, 0, "(This is stored locally on your computer and is only used")
-        util.safe_addstr(stdscr, 3, 0, "to personalize dialogue in the app, so you can opt out!)")
+        util.safe_addstr(stdscr, 2, 0, "(This is stored locally on your computer and is only used", curses.A_ITALIC)
+        util.safe_addstr(stdscr, 3, 0, "to personalize dialogue in the app, so you can opt out!)", curses.A_ITALIC)
         util.safe_addstr(stdscr, 4, 0, "-" * WINDOW_WIDTH)
+        # Uses __NULL__ since the user can't use special chars in actual values
+        c_name = ls.get_instance().get_property(q_data["ls_key"], "__NULL__")
+        util.safe_addstr(stdscr, 5, 0, q_data["prompt"] + (" (Currently %s)" % c_name if q_data["type"] == "input" and c_name != "__NULL__" else ""))
         stdscr.refresh()
-        choice = util.curses_input(stdscr, "> ", 5, 0)
+        # last y used was 5, so start at 6
+        y = 6
+        if q_data["type"] == "choice":
+            util.safe_addstr(stdscr, y, 0, " ") # Blank line
+            y += 1
+            for i, option in enumerate(q_data["options"]):
+                util.safe_addstr(stdscr, y, 0, f" {i+1}) {option['text']}")
+                y += 1
+            util.safe_addstr(stdscr, y, 0, " ") # Blank line
+            y += 1
+        choice = util.curses_input(stdscr, "> ", y, 0)
         if choice == "__KEY_RESIZE__":
             continue # Refresh
         else:
-            if util.is_name_silly(choice):
-                util.safe_addstr(stdscr, 5, 0, "That's a silly name!")
-                stdscr.refresh()
-                util.safe_sleep(stdscr, 1.2)
-                continue
+            if q_data["type"] == "choice":
+                try:
+                    choice_num = int(choice) - 1
+                    if choice_num < 0 or choice_num >= len(q_data["options"]):
+                        raise ValueError()
+                    choice_id = q_data["options"][choice_num]["id"]
+                    ls.get_instance().set_property(q_data["ls_key"], choice_id)
+
+                    success_key = "default"
+                    for key in q_data["success"]:
+                        if key == "default":
+                            continue
+
+                        if "-" in key:
+                            lo, hi = map(int, key.split("-"))
+                            if lo <= choice_num <= hi:
+                                success_key = key
+                                break
+                        else:
+                            if choice_num == int(key):
+                                success_key = key
+                                break
+                    success_data = q_data["success"][success_key]
+                    util.safe_clear_line(stdscr, y)
+                    util.safe_addstr_dialogue(stdscr, y, 0, success_data["text"], spec=spec)
+                    util.f_getch(stdscr)
+                    if not success_data["good"]:
+                        util.safe_sleep(stdscr, 1)
+                        util.safe_clear_line(stdscr, y)
+                        util.safe_addstr_dialogue(stdscr, y, 0, success_data["bad_text"], spec=spec)
+                        y += 1
+                        util.safe_addstr_dialogue(stdscr, y, 0, "=1Press a key to retry.=", spec=spec)
+                        util.f_getch(stdscr)
+                        continue
+                    q_index += 1
+                except ValueError:
+                    util.safe_clear_line(stdscr, y)
+                    util.safe_addstr(stdscr, y, 0, am.bother())
+                    y += 1
+                    stdscr.refresh()
+                    util.f_getch(stdscr)
+                    continue
+            elif q_data["type"] == "input":
+                choice_stripped = choice.strip()
+                if not q_data["filter"](choice_stripped):
+                    util.safe_clear_line(stdscr, y)
+                    util.safe_addstr(stdscr, y, 0, q_data["error"])
+                    y += 1
+                    stdscr.refresh()
+                    util.safe_sleep(stdscr, 1.2)
+                    continue
+                ls.get_instance().set_property(q_data["ls_key"], choice_stripped)
+                util.safe_clear_line(stdscr, y)
+                util.safe_addstr_dialogue(stdscr, y, 0, q_data["success"] % choice_stripped, spec=spec)
+                util.f_getch(stdscr)
+                q_index += 1
             # TODO: Store name in localstorage and use it to personalize dialogue
     
 
@@ -403,7 +492,12 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
             "-" * WINDOW_WIDTH,
             "",
             "Press any key to continue."], line_delay=0.08)
-        
+    
+    if ls.get_instance().get_property("personal_stuff_setup", False) == False:
+        personal_stuff_curses(stdscr)
+        ls.get_instance().set_property("personal_stuff_setup", True)
+
+    if show_welcome:
         edit_lists_curses(stdscr, everyday_list)
 
     am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
