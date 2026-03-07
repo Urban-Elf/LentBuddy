@@ -4,6 +4,9 @@ from typing import Union
 import sys
 import curses
 import time
+import random
+import re
+
 
 active_lines = 0
 
@@ -50,8 +53,12 @@ def save_list(path: PathLike, items: list[str]) -> None:
 
 ################## NEW ##################
 
-### EFFECTS ###
+def is_name_silly(name):
+    if re.search(r'[^A-Za-z]', name):
+        return True
+    return False
 
+### EFFECTS ###
 
 def ellipsis_effect(stdscr, s, y, x, rng, maxwidth=3, iterations=1, delay=0.5):
     for i in range(rng.randint(1, iterations)):
@@ -76,7 +83,75 @@ def clear_effect(stdscr, delay=0.05):
         if not len(line) == 0:
             safe_sleep(stdscr, delay)
 
+def shake_effect(stdscr, y, x, s, intensity=2, delay=0.03, iterations=10):
+    """
+    Shake a text string in place on the screen.
+
+    Args:
+        stdscr: curses screen object
+        s (str): text to shake
+        y, x (int): starting position
+        intensity (int): max offset in characters (horizontal)
+        delay (float): delay between shake frames
+        iterations (int): how many shake cycles to perform
+    """
+    base_y, base_x = y, x
+
+    for _ in range(iterations):
+        # Random horizontal displacement in [-intensity, intensity]
+        dx = random.randint(-intensity, intensity)
+        dy = 0  # could be random.randint(-intensity, intensity) if vertical shake wanted
+
+        # Clear previous position
+        safe_move(stdscr, base_y, 0)
+        stdscr.clrtoeol()
+
+        # Draw at new offset
+        safe_addstr(stdscr, base_y + dy, base_x + dx, s)
+        stdscr.refresh()
+        safe_sleep(stdscr, delay)
+
+    # Clear previous position
+    safe_move(stdscr, base_y, 0)
+    stdscr.clrtoeol()
+    # Finally, draw text in original position
+    safe_addstr(stdscr, base_y, base_x, s)
+    stdscr.refresh()
+
 ### HELPER ###
+
+
+def curses_input(stdscr, prompt, y, x):
+    curses.curs_set(1)
+    safe_addstr(stdscr, y, x, prompt)
+    stdscr.refresh()
+
+    buffer = []
+    pos = 0
+
+    while True:
+        key = f_getch(stdscr)
+
+        if key in (10, 13):  # Enter
+            break
+        elif key in (curses.KEY_BACKSPACE, 127):
+            if buffer:
+                buffer.pop()
+                pos -= 1
+                safe_addstr(stdscr, y, x + len(prompt), " " * (len(buffer)+1))
+        elif key == curses.KEY_DOWN:
+            return "__KEY_DOWN__"
+        elif key == curses.KEY_RESIZE:
+            return "__KEY_RESIZE__"
+        elif 32 <= key <= 126:
+            buffer.append(chr(key))
+            pos += 1
+
+        safe_addstr(stdscr, y, x + len(prompt), "".join(buffer))
+        safe_move(stdscr, y, x + len(prompt) + pos)
+        stdscr.refresh()
+
+    return "".join(buffer)
 
 def f_getch(stdscr, filter_custom=[]):
     while True:
@@ -86,9 +161,14 @@ def f_getch(stdscr, filter_custom=[]):
         
 def safe_addstr(stdscr, y, x, text, attr=0):
     h, w = stdscr.getmaxyx()
-    if y >= h or x >= w:
+    if y < 0 or y >= h or x >= w:
         return
-    stdscr.addstr(y, x, text[:w - x], attr)
+    if x < 0:
+        # Shift text to start at 0 if x is negative
+        text = text[-x:]
+        x = 0
+    max_len = max(0, w - x)
+    stdscr.addstr(y, x, text[:max_len], attr)
 
 def safe_addstr_tokenized(stdscr, y, x, text, attr=0):
     pos = x
@@ -152,78 +232,185 @@ def safe_addstr_tokenized(stdscr, y, x, text, attr=0):
         pos += 1
         i += 1
 
-def safe_addstr_dialogue(stdscr, x, y, text, spec=None):
+def safe_addstr_dialogue(stdscr, y, x, text, attr=0, spec=None):
     """
-    Slowly prints text to stdscr.
-    
-    Modes:
-    - Default: word by word, delay spec['word_delays'][0]
-    - #i TEXT #: word block with delay spec['word_delays'][i]
-    - =i TEXT =: letter by letter with delay spec['char_delays'][i]
-    
-    text: str
-    x, y: start positions
-    spec: dict with 'word_delays' and 'char_delays'
+    -------------------------------------------------------------------------
+    Token Reference Table (for future-you):
+    -------------------------------------------------------------------------
+    1. Default words (no token)
+       - Delay: spec['word_delays'][0] (after first word)
+       - Whitespace is printed immediately
+       
+    2. #i#           → Pause only, no text printed
+       - Delay: spec['br_delays'][i]
+       - Leading whitespace before token is skipped
+       - Example: "Hello#1#World" → delays 1 then prints "World"
+       
+    3. #i TEXT#      → Word block, delay per word
+       - Delay: spec['word_delays'][i] for each word
+       - Whitespace between words is printed immediately (no delay)
+       - Escaping: "\#" to include literal #
+       - Example: "#2This is fast#" → delays per word using word_delays[2]
+       
+    4. =i TEXT=      → Char block, letter by letter
+       - Delay: spec['char_delays'][i] per character
+       - Escaping: "\=" to include literal =
+       - Example: "=0Hello=" → prints each letter with char_delays[0]
+       
+    5. Escaping
+       - Prefix \ to print token characters literally
+       - Example: "\#1\#" → prints "#1#" literally
+       
+    -------------------------------------------------------------------------
+    Notes:
+    - All delays are optional; defaults used if spec keys missing.
+    - All token parsing handles escape sequences to prevent accidental delay.
+    -------------------------------------------------------------------------
     """
+
     if spec is None:
-        spec = {"word_delays":[0.05], "char_delays":[0.015]}
+        spec = {
+            "word_delays": [0.05],
+            "char_delays": [0.015],
+            "br_delays": [0.05]  # for pause-only #i# tokens
+        }
 
     pos_x = x
     pos_y = y
     i = 0
+    first_word = True
+    skip_space_once = False
+
+    def word_delay(idx):
+        delays = spec["word_delays"]
+        return delays[idx] if idx < len(delays) else delays[0]
+
+    def char_delay(idx):
+        delays = spec["char_delays"]
+        return delays[idx] if idx < len(delays) else delays[0]
+
+    def br_delay(idx):
+        delays = spec.get("br_delays", spec["word_delays"])
+        return delays[idx] if idx < len(delays) else delays[0]
+
     while i < len(text):
         c = text[i]
 
-        # Word block token: #i ... #
-        if c == "#" and i+1 < len(text) and text[i+1].isdigit():
-            idx = int(text[i+1])
-            i += 2
-            block = ""
-            while i < len(text) and text[i] != "#":
-                block += text[i]
-                i += 1
-            i += 1  # skip closing #
-            words = block.split(" ")
-            for word in words:
-                stdscr.addstr(pos_y, pos_x, word + " ")
-                pos_x += len(word) + 1
-                stdscr.refresh()
-            time.sleep(spec["word_delays"][idx] if idx < len(spec["word_delays"]) else spec["word_delays"][0])
-            continue
-
-        # Char block token: =i ... =
-        if c == "=" and i+1 < len(text) and text[i+1].isdigit():
-            idx = int(text[i+1])
-            i += 2
-            block = ""
-            while i < len(text) and text[i] != "=":
-                block += text[i]
-                i += 1
-            i += 1  # skip closing =
-            for ch in block:
-                stdscr.addstr(pos_y, pos_x, ch)
-                pos_x += 1
-                stdscr.refresh()
-                time.sleep(spec["char_delays"][idx] if idx < len(spec["char_delays"]) else spec["char_delays"][0])
-            continue
-
-        # Default: print one word at a time
-        if c.isspace():
-            stdscr.addstr(pos_y, pos_x, c)
+        # ---------------------------
+        # Escape sequence: print literally
+        # ---------------------------
+        if c == "\\" and i+1 < len(text):
+            i += 1
+            stdscr.addstr(pos_y, pos_x, text[i], attr)
             pos_x += 1
             i += 1
             continue
 
-        # Grab full word
+        # ---------------------------
+        # Pause token: #i#
+        # ---------------------------
+        if c == "#" and i+2 < len(text) and text[i+1].isdigit() and text[i+2] == "#":
+            idx = int(text[i+1])
+            safe_sleep(stdscr, br_delay(idx))
+            i += 3
+            skip_space_once = True
+            continue
+
+        # ---------------------------
+        # Word block: #i TEXT#
+        # ---------------------------
+        if c == "#" and i+1 < len(text) and text[i+1].isdigit():
+            idx = int(text[i+1])
+            i += 2
+
+            block = ""
+            while i < len(text) and text[i] != "#":
+                # handle escaped #
+                if text[i] == "\\" and i+1 < len(text) and text[i+1] == "#":
+                    block += "#"
+                    i += 2
+                else:
+                    block += text[i]
+                    i += 1
+            i += 1  # skip closing #
+
+            bi = 0
+            while bi < len(block):
+                if block[bi].isspace():
+                    stdscr.addstr(pos_y, pos_x, block[bi], attr)
+                    pos_x += 1
+                    bi += 1
+                    continue
+
+                word = ""
+                while bi < len(block) and not block[bi].isspace():
+                    word += block[bi]
+                    bi += 1
+
+                safe_sleep(stdscr, word_delay(idx))
+                stdscr.addstr(pos_y, pos_x, word, attr)
+                pos_x += len(word)
+                stdscr.refresh()
+
+            first_word = False
+            continue
+
+        # ---------------------------
+        # Char block: =i TEXT=
+        # ---------------------------
+        if c == "=" and i+1 < len(text) and text[i+1].isdigit():
+            idx = int(text[i+1])
+            i += 2
+
+            block = ""
+            while i < len(text) and text[i] != "=":
+                # handle escaped =
+                if text[i] == "\\" and i+1 < len(text) and text[i+1] == "=":
+                    block += "="
+                    i += 2
+                else:
+                    block += text[i]
+                    i += 1
+            i += 1  # skip closing =
+
+            for ch in block:
+                stdscr.addstr(pos_y, pos_x, ch, attr)
+                pos_x += 1
+                stdscr.refresh()
+                safe_sleep(stdscr, char_delay(idx))
+            continue
+
+        # ---------------------------
+        # Whitespace
+        # ---------------------------
+        if c.isspace():
+            if skip_space_once:
+                skip_space_once = False
+                i += 1
+                continue
+            stdscr.addstr(pos_y, pos_x, c, attr)
+            pos_x += 1
+            i += 1
+            continue
+
+        # ---------------------------
+        # Default word
+        # ---------------------------
         word = ""
-        while i < len(text) and not text[i].isspace():
+        while i < len(text) and not text[i].isspace() and not text[i] in "#=":
+            if text[i] == "\\" and i+1 < len(text) and text[i+1] in "#=":
+                i += 1
             word += text[i]
             i += 1
-        stdscr.addstr(pos_y, pos_x, word)
+
+        if not first_word:
+            safe_sleep(stdscr, word_delay(0))
+
+        stdscr.addstr(pos_y, pos_x, word, attr)
         pos_x += len(word)
         stdscr.refresh()
-        time.sleep(spec["word_delays"][0])
-
+        first_word = False
+    
 def safe_move(stdscr, y, x):
     """
     Move the cursor to (y, x) safely.

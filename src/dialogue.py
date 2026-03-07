@@ -22,7 +22,7 @@ ANGELIC = {
 
 EVIL_MESSAGES = [
     "Hey, you know that penance you have to do today? Yeah, you can just skip it. No one will know.",
-    "Eh, like, don't worry about it. You can just do it tomorrow, or maybe the day after. It’s not like it’s important or anything.",
+    "Eh, like, don't worry about it. You can just do it tomorrow, or maybe the day after. It's not like it's important or anything.",
     "You know, you could just do something else instead. Like, maybe watch a movie or something. That would be way more fun.",
 ]
 
@@ -41,7 +41,7 @@ class DialogueManager():
     """
     def __init__(self, rng):
         self.rng = rng
-        self.state = DialogueState.NEUTRAL
+        self.state = DialogueState.BAD
     
     def set_state(self, state: DialogueState):
         self.state = state
@@ -72,7 +72,7 @@ class DialogueSet():
             return curses.color_pair(2)
         return curses.color_pair(0)
     
-    def get_dialogue(self):
+    def get_message(self):
         if self.manager.state == DialogueState.GOOD or (self.manager.state == DialogueState.NEUTRAL and len(self.neutral) < 1):
             return self.manager.rng.choice(self.good)
         elif self.manager.state == DialogueState.BAD:
@@ -110,7 +110,7 @@ def init(rng):
     MANAGER = DialogueManager(rng)
 
 INTERMISSION_WARNINGS = [
-    "Hey! Something is going on with the angels and demons!",
+    "=0Hey!= #0#=0Something is going on with the angels and demons!=",
     "A spiritual battle is happening, and it's affecting the program!",
     "Yo, something went wrong and the program is acting weird! It's a battle!",
     "Wait, something isn't right. It's... a battle!"
@@ -125,7 +125,8 @@ def angelic_drop(stdscr, x, y, manager: DialogueManager, initial_message):
         warning = manager.rng.choice(INTERMISSION_WARNINGS).split(" ")
         x = 0
         for i in range(len(warning)):
-            util.safe_addstr(stdscr, y, x, warning[i] + " ", manager.get_color())
+            util.safe_addstr_dialogue(stdscr, y, x, warning[i] + " ", manager.get_color(),
+                                      spec={"word_delays":[0.1], "char_delays":[0.05], "br_delays":[0.8]})
             x += len(warning[i]) + 1
             time.sleep(0.05)
 
