@@ -87,7 +87,7 @@ class AnnoyanceManager():
     Manages the annoyance level of the app when user chooses invalid options.
         - Starts at 0, and increases by 1 each time the user chooses an invalid option, up to a maximum of len(messages).
         - Stays the same if 3 seconds have passed since the last invalid option.
-        - Resets to 0 if 10 seconds have passed since the last invalid option.
+        - Resets to 0 if 7 seconds have passed since the last invalid option.
     """
     def __init__(self, messages):
         self.messages = messages
@@ -98,7 +98,7 @@ class AnnoyanceManager():
         elapsed = time.time() - self.last_bothered
         if elapsed < 3:
             self.annoyance_level = self.annoyance_level + 1
-        elif elapsed >= 10:
+        elif elapsed >= 7:
             self.annoyance_level = -1
         self.last_bothered = time.time()
         return self.messages[min(max(0, self.annoyance_level), len(self.messages) - 1)]
