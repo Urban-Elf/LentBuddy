@@ -17,6 +17,8 @@ class LocalStorage:
         return self.data.get(key, default)
 
     def load(self):
+        if not os.path.exists(self.path):
+            self.serialize()
         with open(self.path, "r") as f:
             self.data = json.load(f)
 
