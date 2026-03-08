@@ -26,6 +26,52 @@ EVIL_MESSAGES = [
     "You know, you could just do something else instead. Like, maybe watch a movie or something. That would be way more fun.",
 ]
 
+
+WELCOME_LINES = [
+    "#4Welcome to LentBuddy (by Urban-Elf)!#",
+    "",
+    "This app allows you to organize your Lenten",
+    "penances (of prayer, fasting, and almsgiving)",
+    "into lists that you can customize, and then",
+    "roll each day to select a number of them randomly!",
+    "",
+    "The advanage to this is that it encourages one",
+    "to broaden the variety of their penances",
+    "without the risk of becoming overwhelmed or",
+    "losing consistency by the end of the season.",
+    "",
+    "_Inspired by a certain priest's idea of selecting_",
+    "_six penances and rolling them daily with dice._"
+]
+
+NAV_ANNOYANCE_MESSAGES = [
+    "Invalid option. Press any key.",
+    "Bro, that's not even a valid option.",
+    "Dude, are you even trying? Press any key.",
+    "C'mon, it's not that hard. Press any key.",
+    "Alright, last warning. Press any key.",
+    "Fine, have it your way. Press any key.",
+    "You know what? Just stop.",
+]
+
+LIST_ANNOYANCE_MESSAGES = [
+    "Too small. Press any key.",
+    "Come on, at least two characters. Press any key.",
+    "Seriously? Press any key.",
+    "Dude, not this again.",
+    "I'm starting to think you don't want to add any penances at all.",
+    "You know what, get out of here!",
+]
+
+NON_INTEGRAL_ANNOYANCE_MESSEGES = [
+    "Invalid value. Press a key.",
+    "Dude, that's not a number.",
+    "I literally just said...",
+    "Bro.",
+    "Not this again.",
+    "Okay, I'm just going to wait until you quit."
+]
+
 class DialogueState(enum.Enum):
     GOOD = 1
     BAD = 2
