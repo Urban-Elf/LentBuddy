@@ -1,5 +1,5 @@
 # Ignore IDE settings
 .vscode/
 
-
+.venv
 
