@@ -120,10 +120,12 @@ def shake_effect(stdscr, y, x, s, intensity=2, delay=0.03, iterations=10):
 
 ### HELPER ###
 
-
 def curses_input(stdscr, prompt, y, x):
-    curses.curs_set(1)
-    safe_addstr(stdscr, y, x, prompt)
+    try:
+        curses.curs_set(1)
+    except curses.error:
+        pass
+    safe_addstr(stdscr, y, x, prompt) # type: ignore
     stdscr.refresh()
 
     buffer = []
@@ -134,7 +136,7 @@ def curses_input(stdscr, prompt, y, x):
 
         if key in (10, 13):  # Enter
             break
-        elif key in (curses.KEY_BACKSPACE, 127):
+        elif key in (curses.KEY_BACKSPACE, 127, 8):
             if buffer:
                 buffer.pop()
                 pos -= 1
@@ -153,12 +155,35 @@ def curses_input(stdscr, prompt, y, x):
 
     return "".join(buffer)
 
+#def f_getch(stdscr, filter_custom=[]):
+#    while True:
+#        key = stdscr.getch()
+#        if key not in (curses.KEY_DOWN, curses.KEY_UP, curses.KEY_LEFT, curses.KEY_RIGHT) and key not in filter_custom:
+#            return key
+
 def f_getch(stdscr, filter_custom=[]):
+    """
+    Cross-platform getch wrapper.
+    - Uses get_wch() for Windows/Linux Unicode support
+    - Filters out arrow keys and optional custom keys
+    """
     while True:
-        key = stdscr.getch()
-        if key not in (curses.KEY_DOWN, curses.KEY_UP, curses.KEY_LEFT, curses.KEY_RIGHT) and key not in filter_custom:
-            return key
-        
+        try:
+            key = stdscr.get_wch()
+        except curses.error:
+            continue  # ignore transient errors like resize
+
+        # Convert string keys to ord for consistency
+        if isinstance(key, str):
+            key_ord = ord(key)
+        else:
+            key_ord = key  # already int for special keys
+
+        if key_ord not in (
+            curses.KEY_DOWN, curses.KEY_UP, curses.KEY_LEFT, curses.KEY_RIGHT
+        ) and key_ord not in filter_custom:
+            return key_ord
+
 def safe_addstr(stdscr, y, x, text, attr=0):
     h, w = stdscr.getmaxyx()
     if y < 0 or y >= h or x >= w:
