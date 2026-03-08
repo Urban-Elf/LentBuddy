@@ -5,13 +5,7 @@ import platform
 system = platform.system()
 home_dir = Path.home()
 
-if system == "Windows":
-    ROOT_PATH = home_dir / "AppData" / "Roaming" / "LentBuddy"
-elif system == "Darwin":  # macOS
-    ROOT_PATH = home_dir / "Library" / "Application Support" / "LentBuddy"
-else:  # Linux or unknown
-    ROOT_PATH = home_dir / ".lentbuddy"
-
+ROOT_PATH = home_dir / ".lentbuddy"
 LIST_PATH = ROOT_PATH / "lists"
 
 # Create directories
