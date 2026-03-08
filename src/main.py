@@ -1,5 +1,5 @@
 import curses
-from datetime import datetime, date
+from datetime import date
 import calendar
 import time
 import os
@@ -26,42 +26,6 @@ INITIALIZED_COLORS = False
 def daily_file(weekday: int) -> str:
     return DAILY_LISTS / (DAILY_LIST_TEMPLATE % calendar.day_name[weekday])
 
-WELCOME_LINES = [
-    "#4Welcome to LentBuddy (by Urban-Elf)!#",
-    "",
-    "This app allows you to organize your Lenten",
-    "penances (of prayer, fasting, and almsgiving)",
-    "into lists that you can customize, and then",
-    "roll each day to select a number of them randomly!",
-    "",
-    "The advanage to this is that it encourages one",
-    "to broaden the variety of their penances",
-    "without the risk of becoming overwhelmed or",
-    "losing consistency by the end of the season.",
-    "",
-    "_Inspired by a certain priest's idea of selecting_",
-    "_six penances and rolling them daily with dice._"
-]
-
-NAV_ANNOYANCE_MESSAGES = [
-    "Invalid option. Press any key.",
-    "Bro, that's not even a valid option.",
-    "Dude, are you even trying? Press any key.",
-    "C'mon, it's not that hard. Press any key.",
-    "Alright, last warning. Press any key.",
-    "Fine, have it your way. Press any key.",
-    "You know what? Just stop.",
-]
-
-LIST_ANNOYANCE_MESSAGES = [
-    "Too small. Press any key.",
-    "Come on, at least two characters. Press any key.",
-    "Seriously? Press any key.",
-    "Dude, not this again.",
-    "I'm starting to think you don't want to add any penances at all.",
-    "You know what, get out of here!",
-]
-
 # ---------- Helper functions ----------
 
 def determine_penances(everyday_list, count, rng):
@@ -74,14 +38,6 @@ def determine_penances(everyday_list, count, rng):
     return combined_list[:count]
 
 # ---------- Curses UI functions ----------
-
-#def curses_input(stdscr, prompt, y, x):
-#    curses.echo()
-#    util.safe_addstr(stdscr, y, x, prompt)
-#    stdscr.refresh()
-#    s = stdscr.getstr(y, x + len(prompt)).decode()
-#    curses.noecho()
-#    return s.strip()
 
 def roll_screen_curses(stdscr, everyday_list):
     should_tempt = D_MANAGER.should_do_temptation()
@@ -203,7 +159,7 @@ def roll_screen_curses(stdscr, everyday_list):
     util.f_getch(stdscr)
 
 def edit_lists_curses(stdscr, everyday_list, first_time=False):
-    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     clear_set = dialogue.DialogueSet(D_MANAGER,
                                      good=[
@@ -280,7 +236,7 @@ def edit_lists_curses(stdscr, everyday_list, first_time=False):
             util.f_getch(stdscr)
 
 def edit_list_curses(stdscr, title, desc, list: list[str], first_time=False) -> list[str]:
-    am = dialogue.AnnoyanceManager(LIST_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.LIST_ANNOYANCE_MESSAGES)
     
     while True:
         stdscr.clear()
@@ -323,7 +279,7 @@ def edit_list_curses(stdscr, title, desc, list: list[str], first_time=False) -> 
             list.append(choice.strip())
 
 def edit_daily_lists_curses(stdscr):
-    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     while True:
         stdscr.clear()
@@ -357,41 +313,84 @@ def edit_daily_lists_curses(stdscr):
             util.f_getch(stdscr)
 
 def settings_curses(stdscr):
-    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
+    int_am = dialogue.AnnoyanceManager(dialogue.NON_INTEGRAL_ANNOYANCE_MESSEGES)
 
     while True:
         do_dialogue = ls.get_instance().get_property("do_dialogue", True)
+        penance_count = ls.get_instance().get_property("penance_count", 1)
 
         stdscr.clear()
         util.safe_addstr(stdscr, 0, 0, "Settings", curses.color_pair(3) | curses.A_BOLD)
         util.safe_addstr(stdscr, 1, 0, "-" * WINDOW_WIDTH)
         util.safe_addstr(stdscr, 2, 0, " 0) Edit personal info")
-        util.safe_addstr(stdscr, 2, 0, " 1) Funny dialogue: " + "ON" if do_dialogue else "OFF (You're so boring.)")
-        util.safe_addstr_tokenized(stdscr, 3, 0, " r) Reset _everything_")
-        util.safe_addstr(stdscr, 4, 0, " b) <- Back <-")
-        util.safe_addstr(stdscr, 5, 0, "-" * WINDOW_WIDTH)
-        choice = util.curses_input(stdscr, "> ", 6, 0)
+        util.safe_addstr(stdscr, 3, 0, f" 1) Set daily penance count (current: {penance_count})")
+        util.safe_addstr(stdscr, 4, 0, " 2) Toggle dialogue: " + ("(ON)" if do_dialogue else "(OFF - You're so boring.)"))
+        util.safe_addstr_tokenized(stdscr, 5, 0, " r) Reset to defaults")
+        util.safe_addstr(stdscr, 6, 0, " b) <- Back <-")
+        util.safe_addstr(stdscr, 7, 0, "-" * WINDOW_WIDTH)
+        y = 8
+        choice = util.curses_input(stdscr, "> ", y, 0)
         if choice == "0":
             util.clear_effect(stdscr)
             personal_stuff_curses(stdscr)
         elif choice == "1":
+            util.safe_clear_line(stdscr, y)
+            util.safe_addstr(stdscr, y, 0, "Type new daily penance count: ", curses.color_pair(4))
+            y += 1
+            choice_2 = util.curses_input(stdscr, "> ", y, 0)
+            try:
+                new_count = int(choice_2)
+                if new_count < 1:
+                    util.safe_clear_line(stdscr, y)
+                    util.safe_addstr(stdscr, y, 0, "That's ridiculous!")
+                    util.f_getch(stdscr)
+                    continue
+                ls.get_instance().set_property("penance_count", new_count)
+                # continue loop
+            except ValueError:
+                util.safe_clear_line(stdscr, y)
+                util.safe_addstr(stdscr, y, 0, int_am.bother())
+                util.f_getch(stdscr)
+        elif choice == "2":
             ls.get_instance().set_property("do_dialogue", not do_dialogue)
         elif choice == "r":
-            ls.get_instance().reset()
+            util.safe_clear_line(stdscr, y)
+            util.safe_addstr(stdscr, y, 0, "Really reset all settings? Type 'yes' to confirm.", curses.color_pair(4))
+            y += 1
+            choice_2 = util.curses_input(stdscr, "> ", y, 0)
+            if choice_2 == "yes":
+                ls.get_instance().reset()
+                # Make sure welcome doesn't get shown again
+                ls.get_instance().set_property("first_time", False)
+                util.safe_clear_line(stdscr, y)
+                util.safe_addstr(stdscr, y, 0, "All settings reset. Press a key to continue.")
+                util.f_getch(stdscr)
+                # Go to PI setup
+                util.clear_effect()
+                personal_stuff_curses(stdscr)
+                # Then back to main menu
+                break
+            else:
+                util.safe_clear_line(stdscr, y)
+                util.safe_addstr(stdscr, y, 0, "Canceled. Press a key to continue.")
+                util.f_getch(stdscr)
+                # continue loop
         elif choice == "b":
             util.clear_effect(stdscr)
             break # Returns to edit_lists_curses
         elif choice == "__KEY_RESIZE__":
             continue # Refresh
         else:
-            util.safe_addstr(stdscr, 11, 0, am.bother())
+            util.safe_clear_line(stdscr, y)
+            util.safe_addstr(stdscr, y, 0, am.bother())
             stdscr.refresh()
             util.f_getch(stdscr)
 
 def show_welcome_curses(stdscr, extra_lines: list[str]=None, line_delay=0.05):
     stdscr.clear()
     
-    lines = WELCOME_LINES + (extra_lines if extra_lines else [])
+    lines = dialogue.WELCOME_LINES + (extra_lines if extra_lines else [])
     first_time = True
 
     while True:
@@ -411,7 +410,7 @@ def show_welcome_curses(stdscr, extra_lines: list[str]=None, line_delay=0.05):
             break
 
 def personal_stuff_curses(stdscr):
-    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     questions = [
         {
@@ -553,7 +552,7 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
 
         edit_lists_curses(stdscr, everyday_list, first_time=True)
 
-    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+    am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     while True:
         stdscr.clear()
@@ -585,22 +584,24 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
             "Press any key to return to menu."])
         elif choice == "b":
             did_joke = ls.get_instance().get_property("did_quit_joke", False)
-            if RNG.random() < 0.5 and not did_joke:
-                util.safe_addstr(stdscr, 8, 0, "Yo, are you sure you want to quit?")
+            if not did_joke:
+                util.safe_addstr(stdscr, 8, 0, "Yo, are you sure you want to quit? [y/n]")
                 # next line refreshes screen so no direct call required
-                choice_2 = util.curses_input(stdscr, "[y/n]> ", 9, 0)
-                if choice_2.lower()[0] != "y":
-                    util.safe_addstr(stdscr, 9, 0, "Oh, that's a relief.")
+                choice_2 = util.curses_input(stdscr, "> ", 9, 0)
+                if len(choice_2) < 1 or (len(choice_2) > 0 and choice_2.lower()[0] != "y"):
+                    util.safe_clear_line(stdscr, 8)
+                    util.safe_addstr(stdscr, 8, 0, "Oh, that's a relief.")
                     stdscr.refresh()
-                    util.f_getch()
+                    util.safe_sleep(stdscr, 1.2)
                     continue
                 # Yep, we straight up ignore it otherwise.
-                util.safe_addstr(stdscr, 10, 0, "Are you positive?")
-                choice_3 = util.curses_input(stdscr, "[Y/N]> ", 11, 0)
-                if choice_3.lower()[0] != "y":
-                    util.safe_addstr(stdscr, 11, 0, "I always knew you were joking.")
+                util.safe_addstr_tokenized(stdscr, 10, 0, "Are you _positive_? [Y/N]")
+                choice_3 = util.curses_input(stdscr, "> ", 11, 0)
+                if len(choice_3) < 1 or (len(choice_3) > 0 and choice_3.lower()[0] != "y"):
+                    util.safe_clear_line(stdscr, 10)
+                    util.safe_addstr(stdscr, 10, 0, "I always knew you were joking.")
                     stdscr.refresh()
-                    util.f_getch()
+                    util.safe_sleep(stdscr, 1.2)
                     continue
                 ls.get_instance().set_property("did_quit_joke", True)
             break
