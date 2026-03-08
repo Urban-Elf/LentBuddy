@@ -1,7 +1,10 @@
 # Ignore IDE settings
 .vscode/
 
+# Python venv
 .venv
 
-src/__pycache__
+# Pycache
+__pycache__/
+*.pyc
 
