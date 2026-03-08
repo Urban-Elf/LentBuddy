@@ -202,7 +202,7 @@ def roll_screen_curses(stdscr, everyday_list):
     stdscr.refresh()
     util.f_getch(stdscr)
 
-def edit_lists_curses(stdscr, everyday_list):
+def edit_lists_curses(stdscr, everyday_list, first_time=False):
     am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
 
     clear_set = dialogue.DialogueSet(D_MANAGER,
@@ -214,9 +214,24 @@ def edit_lists_curses(stdscr, everyday_list):
                                      bad=[
                                         "Ha ha, good job. You cleared all your penances.",
                                         "Good, good. Now, you don't _really_ need to add them again, do you?",
-                                        "Well, _that_ was a holy move. All lists cleared. Press a key."
+                                        "Well, _that_ was a holy move. You cleared all penances. Press a key."
                                      ],
                                      neutral=["Lists cleared. Press a key to return."])
+    
+    cancel_set = dialogue.DialogueSet(D_MANAGER,
+                                      good=[
+                                        "Don't want to? That's okay too.",
+                                        "May you grow closer to God during this holy season!",
+                                        "Hey, wrong menu, completely understandable. This program is a labyrinth."
+                                      ],
+                                      bad=[
+                                        "You're, backing out now? Oh...",
+                                        "Blast it--I mean, lists _not_ cleared! Press a key...",
+                                        "Dude, seriously. Getting my hopes up for nothing."
+                                      ],
+                                      neutral=[
+                                          "Canceled. Press a key to return."
+                                      ])
 
     while True:
         stdscr.clear()
@@ -224,16 +239,20 @@ def edit_lists_curses(stdscr, everyday_list):
         util.safe_addstr(stdscr, 1, 0, "-" * WINDOW_WIDTH)
         util.safe_addstr(stdscr, 2, 0, " 1) Edit everyday list")
         util.safe_addstr(stdscr, 3, 0, " 2) Edit daily lists")
-        util.safe_addstr(stdscr, 4, 0, " 3) Clear all lists")
-        util.safe_addstr(stdscr, 5, 0, " b) <- Back")
-        util.safe_addstr(stdscr, 6, 0, "-" * WINDOW_WIDTH)
-        choice = util.curses_input(stdscr, "> ", 7, 0)
+        y = 4
+        if not first_time:
+            util.safe_addstr(stdscr, y, 0, " 3) Clear all lists")
+            y += 1
+        util.safe_addstr(stdscr, y, 0, " d) -> Finish setup! ->" if first_time else " b) <- Back <-")
+        y += 1
+        util.safe_addstr(stdscr, y, 0, "-" * WINDOW_WIDTH)
+        y += 1
+        choice = util.curses_input(stdscr, "> ", y, 0)
         if choice == "1":
-            util.clear_effect(stdscr)
-            util.save_list(EVERDAY_LIST, edit_list_curses(stdscr, "EVERYDAY", everyday_list))
+            util.save_list(EVERDAY_LIST, edit_list_curses(stdscr, "EVERYDAY", "These penances are _always able_ to be rolled.", everyday_list))
         elif choice == "2":
             edit_daily_lists_curses(stdscr)
-        elif choice == "3":
+        elif (not first_time and choice == "3"):
             util.clear_effect(stdscr)
             util.safe_addstr(stdscr, 0, 0, "Are you sure you want to clear all lists? Type 'yes' to confirm.", curses.color_pair(4))
             util.safe_sleep(stdscr, 0.05)
@@ -247,29 +266,31 @@ def edit_lists_curses(stdscr, everyday_list):
                 stdscr.refresh()
                 util.f_getch(stdscr)
             else:
-                util.safe_addstr(stdscr, 2, 0, "Phew, that was close! Press any key to return.")
+                util.safe_addstr(stdscr, 2, 0, cancel_set.get_message(), cancel_set.get_color())
                 util.f_getch(stdscr)
             util.clear_effect(stdscr)
-        elif choice == "b":
+        elif (first_time and choice == "d") or (not first_time and choice == "b"):
             util.clear_effect(stdscr)
             break # Returns to main menu
         elif choice == "__KEY_RESIZE__":
             continue # Refresh
         else:
-            util.safe_addstr(stdscr, 7, 0, am.bother())
+            util.safe_addstr(stdscr, y, 0, am.bother())
             stdscr.refresh()
             util.f_getch(stdscr)
 
-def edit_list_curses(stdscr, title, list: list[str], first_time=False) -> list[str]:
+def edit_list_curses(stdscr, title, desc, list: list[str], first_time=False) -> list[str]:
     am = dialogue.AnnoyanceManager(LIST_ANNOYANCE_MESSAGES)
     
     while True:
         stdscr.clear()
         util.safe_addstr(stdscr, 0, 0, f"Editing {title} list", curses.color_pair(3) | curses.A_BOLD)
         util.safe_addstr(stdscr, 1, 0, "-" * WINDOW_WIDTH)
-        util.safe_addstr(stdscr, 2, 0, "Type your penances individually, pressing ENTER after each.", curses.A_ITALIC)
-        util.safe_addstr(stdscr, 3, 0, "Type '-' to remove the most recent one, and 'd' to finish.", curses.A_ITALIC)
-        y = 4
+        util.safe_addstr_tokenized(stdscr, 2, 0, desc)
+        util.safe_addstr(stdscr, 3, 0, " ")
+        util.safe_addstr(stdscr, 4, 0, "Type your penances individually, pressing ENTER after each.", curses.A_ITALIC)
+        util.safe_addstr(stdscr, 5, 0, "Type '-' to remove the most recent one, and 'd' to finish.", curses.A_ITALIC)
+        y = 6
         if first_time:
             util.safe_addstr(stdscr, y, 0, "")
             y += 1
@@ -294,9 +315,10 @@ def edit_list_curses(stdscr, title, list: list[str], first_time=False) -> list[s
             continue # Refresh
         elif clen > 0:
             if clen < 2:
+                util.safe_clear_line(stdscr, y)
                 util.safe_addstr(stdscr, y, 0, am.bother())
                 stdscr.refresh()
-                util.safe_sleep(stdscr, 1.2)
+                util.f_getch(stdscr)
                 continue
             list.append(choice.strip())
 
@@ -314,7 +336,7 @@ def edit_daily_lists_curses(stdscr):
         util.safe_addstr(stdscr, 6, 0, " 5) Friday")
         util.safe_addstr(stdscr, 7, 0, " 6) Saturday")
         util.safe_addstr(stdscr, 8, 0, " 7) Sunday")
-        util.safe_addstr(stdscr, 9, 0, " b) <- Back")
+        util.safe_addstr(stdscr, 9, 0, " b) <- Back <-")
         util.safe_addstr(stdscr, 10, 0, "-" * WINDOW_WIDTH)
         choice = util.curses_input(stdscr, "> ", 11, 0)
         if choice in [str(i) for i in range(1, 8)]:
@@ -322,7 +344,40 @@ def edit_daily_lists_curses(stdscr):
             path = daily_file(choice_num)
             daily_list = util.load_list(path)
             # Edit list and save
-            util.save_list(path, edit_list_curses(stdscr, calendar.day_name[choice_num].upper(), daily_list))
+            day_name = calendar.day_name[choice_num]
+            util.save_list(path, edit_list_curses(stdscr, day_name.upper(), f"These penances can only be rolled on {day_name}.", daily_list))
+        elif choice == "b":
+            util.clear_effect(stdscr)
+            break # Returns to edit_lists_curses
+        elif choice == "__KEY_RESIZE__":
+            continue # Refresh
+        else:
+            util.safe_addstr(stdscr, 11, 0, am.bother())
+            stdscr.refresh()
+            util.f_getch(stdscr)
+
+def settings_curses(stdscr):
+    am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
+
+    while True:
+        do_dialogue = ls.get_instance().get_property("do_dialogue", True)
+
+        stdscr.clear()
+        util.safe_addstr(stdscr, 0, 0, "Settings", curses.color_pair(3) | curses.A_BOLD)
+        util.safe_addstr(stdscr, 1, 0, "-" * WINDOW_WIDTH)
+        util.safe_addstr(stdscr, 2, 0, " 0) Edit personal info")
+        util.safe_addstr(stdscr, 2, 0, " 1) Funny dialogue: " + "ON" if do_dialogue else "OFF (You're so boring.)")
+        util.safe_addstr_tokenized(stdscr, 3, 0, " r) Reset _everything_")
+        util.safe_addstr(stdscr, 4, 0, " b) <- Back <-")
+        util.safe_addstr(stdscr, 5, 0, "-" * WINDOW_WIDTH)
+        choice = util.curses_input(stdscr, "> ", 6, 0)
+        if choice == "0":
+            util.clear_effect(stdscr)
+            personal_stuff_curses(stdscr)
+        elif choice == "1":
+            ls.get_instance().set_property("do_dialogue", not do_dialogue)
+        elif choice == "r":
+            ls.get_instance().reset()
         elif choice == "b":
             util.clear_effect(stdscr)
             break # Returns to edit_lists_curses
@@ -374,10 +429,10 @@ def personal_stuff_curses(stdscr):
             "options": [
                 {"id": "male", "text": "Male"},
                 {"id": "female", "text": "Female"},
-                {"id": "abstain", "text": "Ain't no way I'm answering random questions in a program I got off Github."}
+                {"id": "abstain", "text": "Ain't no way I'm answering random questions in a program I got off GitHub."}
             ],
             "success": {
-                "2": {"text": "=0Welp.= #1# =0Press any key to continue.=", "good": False, "bad_text": "=1Ha,= #2# =0did you really think I,= #2# =0the developer,= #2# =0was going to let you off that easily?= #1#"},
+                "2": {"text": "=0Welp.= #1# =0Press any key to continue.=", "good": False, "bad_text": "=1Ha,= #2# =0did you really think I was going to let you off that easily?= #1#"},
                 "default": {"text": "=0Choice saved!= #1# =0Press any key to continue.=", "good": True}
             }
         }
@@ -386,7 +441,6 @@ def personal_stuff_curses(stdscr):
     spec = {"word_delays":[0.05], "char_delays":[0.03, 0.02], "br_delays":[0.09, 0.9, 0.15]}
 
     q_index = 0
-    y = 0
 
     while q_index < len(questions):
         stdscr.clear()
@@ -471,8 +525,8 @@ def personal_stuff_curses(stdscr):
                 util.safe_addstr_dialogue(stdscr, y, 0, q_data["success"] % choice_stripped, spec=spec)
                 util.f_getch(stdscr)
                 q_index += 1
-            # TODO: Store name in localstorage and use it to personalize dialogue
     
+    util.clear_effect(stdscr)
 
 def main_menu_curses(stdscr, everyday_list, show_welcome=False):
 
@@ -487,18 +541,17 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
         # 4 - Yellow
         curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
 
+    stdscr.keypad(True)
+
     if show_welcome:
         show_welcome_curses(stdscr, [
             "-" * WINDOW_WIDTH,
             "",
             "Press any key to continue."], line_delay=0.08)
-    
-    if ls.get_instance().get_property("personal_stuff_setup", False) == False:
+        
         personal_stuff_curses(stdscr)
-        ls.get_instance().set_property("personal_stuff_setup", True)
 
-    if show_welcome:
-        edit_lists_curses(stdscr, everyday_list)
+        edit_lists_curses(stdscr, everyday_list, first_time=True)
 
     am = dialogue.AnnoyanceManager(NAV_ANNOYANCE_MESSAGES)
 
@@ -510,7 +563,7 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
         util.safe_addstr(stdscr, 3, 0, " 2) Edit penance lists")
         util.safe_addstr(stdscr, 4, 0, " 3) Settings")
         util.safe_addstr(stdscr, 5, 0, " 4) What even is this?")
-        util.safe_addstr_tokenized(stdscr, 6, 0, " b) Quit")
+        util.safe_addstr_tokenized(stdscr, 6, 0, " b) <- Quit <-")
         util.safe_addstr(stdscr, 7, 0, "-" * WINDOW_WIDTH)
 
         choice = util.curses_input(stdscr, "> ", 8, 0)
@@ -521,6 +574,9 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
         elif choice == "2":
             util.clear_effect(stdscr)
             edit_lists_curses(stdscr, everyday_list)
+        elif choice == "3":
+            util.clear_effect(stdscr)
+            settings_curses(stdscr)
         elif choice == "4":
             util.clear_effect(stdscr)
             show_welcome_curses(stdscr, [
@@ -528,10 +584,30 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
             "",
             "Press any key to return to menu."])
         elif choice == "b":
+            did_joke = ls.get_instance().get_property("did_quit_joke", False)
+            if RNG.random() < 0.5 and not did_joke:
+                util.safe_addstr(stdscr, 8, 0, "Yo, are you sure you want to quit?")
+                # next line refreshes screen so no direct call required
+                choice_2 = util.curses_input(stdscr, "[y/n]> ", 9, 0)
+                if choice_2.lower()[0] != "y":
+                    util.safe_addstr(stdscr, 9, 0, "Oh, that's a relief.")
+                    stdscr.refresh()
+                    util.f_getch()
+                    continue
+                # Yep, we straight up ignore it otherwise.
+                util.safe_addstr(stdscr, 10, 0, "Are you positive?")
+                choice_3 = util.curses_input(stdscr, "[Y/N]> ", 11, 0)
+                if choice_3.lower()[0] != "y":
+                    util.safe_addstr(stdscr, 11, 0, "I always knew you were joking.")
+                    stdscr.refresh()
+                    util.f_getch()
+                    continue
+                ls.get_instance().set_property("did_quit_joke", True)
             break
         elif choice == "__KEY_RESIZE__":
             continue
         else:
+            util.safe_clear_line(stdscr, 8)
             util.safe_addstr(stdscr, 8, 0, am.bother())
             stdscr.refresh()
             util.f_getch(stdscr)
@@ -541,6 +617,9 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
 def main():
     # NOTE: Always load daily list each time it gets queried instead of just once at the start,
     # since user can edit it in the app and it should reflect immediately
+
+    # TODO: Maybe add CLI flags (edit lists, roll lists) on a per-user basis for integrations
+    # (like to allow for bots to run as a backend of sorts)
 
     everyday_list = []
 

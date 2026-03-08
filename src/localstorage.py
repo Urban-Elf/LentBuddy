@@ -16,6 +16,11 @@ class LocalStorage:
     def get_property(self, key, default=None):
         return self.data.get(key, default)
 
+    def reset(self, serialize=True):
+        self.data = {}
+        if serialize:
+           self.serialize() 
+
     def load(self):
         if not os.path.exists(self.path):
             self.serialize()

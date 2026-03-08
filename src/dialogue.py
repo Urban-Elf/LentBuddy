@@ -41,7 +41,7 @@ class DialogueManager():
     """
     def __init__(self, rng):
         self.rng = rng
-        self.state = DialogueState.BAD
+        self.state = DialogueState.GOOD
     
     def set_state(self, state: DialogueState):
         self.state = state
