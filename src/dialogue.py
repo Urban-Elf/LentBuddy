@@ -72,6 +72,14 @@ NON_INTEGRAL_ANNOYANCE_MESSEGES = [
     "Okay, I'm just going to wait until you quit."
 ]
 
+
+INTERMISSION_WARNINGS = [
+    "=0Hey!= #0# =0Something is going on with the angels and demons!=",
+    "=0A battle is happening, and it's affecting the program!=",
+    "Yo, something went wrong and the program is acting weird! It's a battle!",
+    "=0Wait,= #1# =0something isn't right.= #0# =0It's #1#=1...= #0# =0a battle!="
+]
+
 class DialogueState(enum.Enum):
     GOOD = 1
     BAD = 2
@@ -83,7 +91,7 @@ class DialogueManager():
     The state changes based on the user's choices and the RNG,
     and affects the dialogue that is shown to the user.
 
-    State can change every now and then via the call 
+    State can change every now and then via the call roll_state()
     """
     def __init__(self, rng):
         self.rng = rng
@@ -99,10 +107,23 @@ class DialogueManager():
         roll = self.rng.random()
         if roll < 0.3:
             self.state = DialogueState.GOOD
+        # Don't want these happening very frequently at all.
         elif roll < 0.1:
             self.state = DialogueState.BAD
         else:
             self.state = DialogueState.NEUTRAL
+
+    # Ending:
+    # "Remember, son, God always prevails."
+    # "Plus, it's hardcoded. Doesn't change the facts, though."
+
+    def angelic_drop(self, stdscr, x, y):
+        """ Gets rid of the bad guys. """
+        warning_spec = {"word_delays":[0.1], "char_delays":[0.03, 0.07], "br_delays":[1.1, 0.9]}
+
+        if localstorage.get_instance().get_property("do_dialogue", True) and self.state == DialogueState.BAD:
+            warning = self.rng.choice(INTERMISSION_WARNINGS)
+            util.safe_addstr_dialogue(stdscr, y, x, warning, spec=warning_spec)
 
 class DialogueSet():
     def __init__(self, manager: DialogueManager, good: list[str], bad: list[str], neutral: list[str]=[]):
@@ -154,26 +175,3 @@ MANAGER = None
 def init(rng):
     global MANAGER
     MANAGER = DialogueManager(rng)
-
-INTERMISSION_WARNINGS = [
-    "=0Hey!= #0#=0Something is going on with the angels and demons!=",
-    "A spiritual battle is happening, and it's affecting the program!",
-    "Yo, something went wrong and the program is acting weird! It's a battle!",
-    "Wait, something isn't right. It's... a battle!"
-]
-
-# Ending:
-# "Remember, son, God always prevails."
-# "Plus, it's hardcoded. Doesn't change the facts, though."
-
-def angelic_drop(stdscr, x, y, manager: DialogueManager, initial_message):
-    if localstorage.get_instance().get_property("do_intermissions", True):
-        warning = manager.rng.choice(INTERMISSION_WARNINGS).split(" ")
-        x = 0
-        for i in range(len(warning)):
-            util.safe_addstr_dialogue(stdscr, y, x, warning[i] + " ", manager.get_color(),
-                                      spec={"word_delays":[0.1], "char_delays":[0.05], "br_delays":[0.8]})
-            x += len(warning[i]) + 1
-            time.sleep(0.05)
-
-
