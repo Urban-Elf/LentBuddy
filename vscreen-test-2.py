@@ -94,7 +94,7 @@ def main(stdscr):
 
     for msg in messages:
         vscreen.addstr_append(msg)
-        curses.napms(200)  # small delay to simulate timing
+        curses.napms(900)  # small delay to simulate timing
 
     vscreen.addstr_append("Press Enter to exit...")
 
