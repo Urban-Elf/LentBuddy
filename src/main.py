@@ -49,17 +49,17 @@ def roll_screen_curses(stdscr, everyday_list):
     # TODO: Stop it later with today.isoformat() check with stored ls one so you can only get roll anims once a day
 
     start_text_options = [
-        "=0Alright,= #1# =0get ready==1...=",
-        "=0Processing==1...=",
-        "=0Here goes==1...",
-        "=0Rolling the computer dice==1...=",
-        "=0Getting Grant out of bed==1...="
+        "Alright, get ready",
+        "Processing",
+        "Here goes",
+        "Rolling the computer dice",
+        "Getting Grant out of bed"
     ]
 
     t_index = RNG.randint(0, len(start_text_options) - 1)
     start_text = start_text_options[t_index]
-    #util.ellipsis_effect(stdscr, start, 2, 0, rng=RNG, iterations=1)
-    util.safe_addstr_dialogue(stdscr, 2, 0, start_text, spec=init_spec)
+    util.ellipsis_effect(stdscr, start_text, 2, 0, rng=RNG, iterations=RNG.randint(1, 2))
+    #util.safe_addstr_dialogue(stdscr, 2, 0, start_text, spec=init_spec)
 
     util.safe_sleep(stdscr, 0.5 + RNG.random * 0.5)
 
@@ -91,15 +91,15 @@ def roll_screen_curses(stdscr, everyday_list):
     util.safe_sleep(stdscr, 0.6)
 
     middle_text_options = [
-        "And the penances for today are...",
-        "Almost done...",
-        "Drumroll please...",
-        "Let's see what we got..."
-        "Okay, that was a terrible idea."
+        "And the penances for today are",
+        "Almost done",
+        "Drumroll please",
+        "Checking the faces"
+        "Okay, that was a terrible idea"
     ]
     middle_text = middle_text_options[t_index]
-    util.safe_addstr_dialogue(stdscr, 4, 0, middle_text, spec=init_spec)
-    #util.ellipsis_effect(stdscr, middle, 4, 0, rng=RNG, iterations=RNG.randint(1, 3))
+    #util.safe_addstr_dialogue(stdscr, 4, 0, middle_text, spec=init_spec)
+    util.ellipsis_effect(stdscr, middle_text, 4, 0, rng=RNG, iterations=RNG.randint(1, 3))
     util.safe_sleep(stdscr, 0.4 + RNG.random() * 0.2)
 
     low_bound_set = dialogue.DialogueSet(D_MANAGER,
@@ -107,7 +107,8 @@ def roll_screen_curses(stdscr, everyday_list):
                                              
                                          ],
                                          bad=[
-                                             
+                                             "You're worse than us.",
+                                             ""
                                          ],
                                          neutral=[
                                              "Has to be at least 1!"
@@ -547,7 +548,7 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
     if curses.has_colors() and curses.can_change_color() and not INITIALIZED_COLORS:
         # 1 - Good
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
-        # 2 - Evil
+        # 2 - Bad
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
         # 3 - Magenta
         curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK)

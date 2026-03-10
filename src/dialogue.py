@@ -75,27 +75,59 @@ NON_INTEGRAL_ANNOYANCE_MESSEGES = [
 
 INTERMISSION_WARNINGS = [
     "=0Hey!= #0# =0Something is going on with the angels and demons!=",
-    "=0A battle is happening, and it's affecting the program!=",
+    "=0A battle is happening,= #1 =0and it's affecting the program!=",
     "Yo, something went wrong and the program is acting weird! It's a battle!",
     "=0Wait,= #1# =0something isn't right.= #0# =0It's #1#=1...= #0# =0a battle!="
 ]
 
 class DialogueState(enum.Enum):
-    GOOD = 1
-    BAD = 2
-    NEUTRAL = 3
+    GOOD = (1, 1)
+    BAD = (2, 2)
+    NEUTRAL = (0, 3)
+
+    def __init__(self, color_id, id):
+        self.color_id = color_id
+        self.id = id
 
 class DialogueManager():
     """
-    Manages the dialogue state of the app, which can be good, bad, or neutral.
+    Manages the dialogue state of the app, which can be GOOD, BAD, or NEUTRAL.
     The state changes based on the user's choices and the RNG,
     and affects the dialogue that is shown to the user.
 
-    State can change every now and then via the call roll_state()
+    State can change every now and then via the call `roll_state()`.
+
+    <b id="state_tree">State Tree:</b>
+
+    ```
+    __Neutral__
+    |         |
+    Good      Bad
+    |         |
+    Neutral   Good
+              |
+              Neutral
+    ```
+
+    Once `state` is `DialogueState.GOOD` or `DialogueState.BAD`, then
+    `max_manifest_count` is set to a random value, which controls how many
+    times a behavior can be performed on that state. `manifest_count` is
+    incremented after each of these to keep track of these.
+
+    When `manifest_count` == `max_manifest_count`, the state progresses
+    as indicated in the <b>State Tree</b>.
+
+    State gets serialized and reloaded on app shutdown/startup in the form:
+    - `dialogue_state`: `DialogueState`
+    - `dialogue_manifest_count`: `int`
+    - `dialogue_max_manifest_count`: `int`
+
     """
     def __init__(self, rng):
         self.rng = rng
         self.state = DialogueState.GOOD
+        self.manifest_count = 0
+        self.max_manifest_count = 0
     
     def set_state(self, state: DialogueState):
         self.state = state
@@ -133,11 +165,7 @@ class DialogueSet():
         self.neutral = neutral
 
     def get_color(self):
-        if self.manager.state == DialogueState.GOOD:
-            return curses.color_pair(1)
-        elif self.manager.state == DialogueState.BAD:
-            return curses.color_pair(2)
-        return curses.color_pair(0)
+        return curses.color_pair(self.manager.state.color_id)
     
     def get_message(self):
         if self.manager.state == DialogueState.GOOD or (self.manager.state == DialogueState.NEUTRAL and len(self.neutral) < 1):
