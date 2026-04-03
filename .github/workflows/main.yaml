@@ -63,5 +63,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: latest
-        files: artifacts/*
+        file_glob: true
+        file: artifacts/*
         overwrite: true
