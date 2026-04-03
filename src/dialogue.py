@@ -3,7 +3,7 @@ import time
 import enum
 
 from . import util
-from . import localstorage
+from . import localstorage as ls
 
 ANGELIC = {
     "michael": {
@@ -76,9 +76,13 @@ NON_INTEGRAL_ANNOYANCE_MESSEGES = [
 INTERMISSION_WARNINGS = [
     "=0Hey!= #0# =0Something is going on with the angels and demons!=",
     "=0A battle is happening,= #1 =0and it's affecting the program!=",
-    "Yo, something went wrong and the program is acting weird! It's a battle!",
+    "=0Yo,= #1# =0something went wrong and the program is acting weird!= #0# =0It's a battle!=",
     "=0Wait,= #1# =0something isn't right.= #0# =0It's #1#=1...= #0# =0a battle!="
 ]
+
+class Gender(enum.Enum):
+    MALE = {"pos":"his","obj":"he","sub":"him"}
+    FEMALE = {"pos":"her","obj":"she","sub":"her"}
 
 class DialogueState(enum.Enum):
     GOOD = (1, 1)
@@ -125,12 +129,24 @@ class DialogueManager():
     """
     def __init__(self, rng):
         self.rng = rng
-        self.state = DialogueState.GOOD
+        self.gd = Gender.MALE
+        self.state = DialogueState.NEUTRAL
         self.manifest_count = 0
         self.max_manifest_count = 0
     
+    def set_gender(self, gender: str):
+        if gender == "female":
+            self.gd = Gender.FEMALE
+        else:
+            self.gd = Gender.MALE
+
     def set_state(self, state: DialogueState):
         self.state = state
+
+    def get_state(self):
+        if ls.get_instance().get_property("do_dialogue", False):
+            return DialogueState.NEUTRAL
+        return self.state
 
     def should_do_temptation(self):
         return self.rng.random() < 0.3
@@ -151,9 +167,9 @@ class DialogueManager():
 
     def angelic_drop(self, stdscr, x, y):
         """ Gets rid of the bad guys. """
-        warning_spec = {"word_delays":[0.1], "char_delays":[0.03, 0.07], "br_delays":[1.1, 0.9]}
+        warning_spec = {"word_delays":[0.1], "char_delays":[0.02, 0.07], "br_delays":[1.1, 0.9]}
 
-        if localstorage.get_instance().get_property("do_dialogue", True) and self.state == DialogueState.BAD:
+        if ls.get_instance().get_property("do_dialogue", False) and self.state == DialogueState.BAD:
             warning = self.rng.choice(INTERMISSION_WARNINGS)
             util.safe_addstr_dialogue(stdscr, y, x, warning, spec=warning_spec)
 
@@ -179,7 +195,7 @@ class DialogueSet():
 
 class AnnoyanceManager():
     """
-    Manages the annoyance level of the app when user chooses invalid options.
+    Manages the annoyance level of certain messages when user chooses invalid options.
         - Starts at 0, and increases by 1 each time the user chooses an invalid option, up to a maximum of len(messages).
         - Stays the same if 3 seconds have passed since the last invalid option.
         - Resets to 0 if 7 seconds have passed since the last invalid option.
