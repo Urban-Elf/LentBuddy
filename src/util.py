@@ -1,38 +1,9 @@
-import os
 from pathlib import Path
 from typing import Union
-import sys
 import curses
 import time
 import random
 import re
-
-
-active_lines = 0
-
-def label(s: str="", noend=False):
-    global active_lines
-    print(s, end="" if noend else "\n")
-    if not noend:
-        active_lines = active_lines + 1
-
-def clear(offset=0):
-    global active_lines
-    if active_lines > 0:
-        active_lines += offset
-        # Move up
-        sys.stdout.write(f"\033[{active_lines}A")
-        
-        # Clear each line
-        for _ in range(active_lines):
-            sys.stdout.write("\033[2K")  # Clear entire line
-            sys.stdout.write("\033[1B")  # Move down
-        
-        # Move back up again
-        sys.stdout.write(f"\033[{active_lines}A")
-        
-        sys.stdout.flush()
-        active_lines = 0
 
 PathLike = Union[str, Path]
 
