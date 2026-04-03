@@ -756,7 +756,9 @@ def main():
     # since user can edit it in the app and it should reflect immediately
 
     # TODO: Maybe add CLI flags (edit lists, roll lists) on a per-user basis for integrations
-    # (like to allow for bots to run as a backend of sorts)
+    # (like to allow for bots to run this as a backend of sorts)
+    #   - Isolate files on a per-client basis (so .lentbuddy/Jim/)
+    #   - Reserve .lentbuddy/__local__ for local runs of the full app (frontend as well)
 
     everyday_list = []
 
