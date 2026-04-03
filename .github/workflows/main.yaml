@@ -58,11 +58,17 @@ jobs:
       with:
         path: artifacts
 
+    - name: Get latest release tag
+      id: get_latest_release
+      run: |
+        latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
+        echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
     - name: Upload artifacts to latest release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: latest
+        tag: ${{ env.latest_tag }}
         file_glob: true
         file: artifacts/*
         overwrite: true
