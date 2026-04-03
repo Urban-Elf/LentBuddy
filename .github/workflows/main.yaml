@@ -72,5 +72,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ env.latest_tag }}
         file_glob: true
-        file: artifacts/*
+        file: artifacts/**/*
         overwrite: true
