@@ -1,0 +1,55 @@
+name: Build Executable
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
+
+    - name: Install pyinstaller
+      run: pip install pyinstaller
+
+    - name: Set OS-specific name
+      id: os-name
+      run: |
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          echo "os_name=linux" >> $GITHUB_ENV
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          echo "os_name=windows" >> $GITHUB_ENV
+        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          echo "os_name=macos" >> $GITHUB_ENV
+        fi
+
+    - name: Build executable
+      run: pyinstaller --onefile --name lentbuddy-${{ env.os_name }} bootstrap.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: lentbuddy-${{ env.os_name }}
+        path: dist/lentbuddy-${{ env.os_name }}*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
