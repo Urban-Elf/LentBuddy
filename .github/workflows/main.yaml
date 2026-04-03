@@ -50,27 +50,30 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-    - name: Get latest release tag
-      id: get_latest_release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
-        echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+      - name: Get latest release tag
+        id: get_latest_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-    - name: Upload artifacts to latest release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.latest_tag }}
-        file_glob: true
-        file: artifacts/**/*
-        overwrite: true
+      - name: Upload artifacts to latest release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.latest_tag }}
+          file_glob: false
+          file: |
+            artifacts/lentbuddy-windows/lentbuddy-windows.exe
+            artifacts/lentbuddy-macos/lentbuddy-macos
+            artifacts/lentbuddy-linux/lentbuddy-linux
+          overwrite: true
