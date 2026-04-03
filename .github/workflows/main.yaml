@@ -50,7 +50,26 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+
+    - name: Upload to latest release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Get the latest release upload URL
+        latest_release=$(gh api repos/${{ github.repository }}/releases/latest --jq .upload_url)
+        upload_url=${latest_release/"{?name,label}"/""}
+
+        # Upload each artifact to the latest release
+        for file in artifacts/*; do
+          name=$(basename "$file")
+          gh api "$upload_url?name=$name" \
+            -H "Content-Type: application/octet-stream" \
+            --input "$file"
+        done
