@@ -17,6 +17,8 @@ DAILY_LISTS = file_tree.ROOT_PATH / "daily"
 TODAY = date.today()
 RNG = random.Random(TODAY.isoformat())
 
+TODAY.strftime("%Y-%m-%d")
+
 dialogue.init(RNG)
 from .dialogue import MANAGER as D_MANAGER
 
@@ -26,14 +28,23 @@ def daily_file(weekday: int) -> str:
     return DAILY_LISTS / (DAILY_LIST_TEMPLATE % calendar.day_name[weekday])
 
 # ---------- Helper functions ----------
-
 def determine_penances(everyday_list, count):
-    daily_list = util.load_list(daily_file(TODAY.weekday()))
+    penance_freq = ls.get_instance().get_property("penance_freq", 0)
+
+    if penance_freq == 1:
+        iso = TODAY.isocalendar()
+        seed_str = f"{iso.year}-{iso.week}"
+    elif penance_freq == 2:
+        seed_str = TODAY.strftime("%Y-%m")
+    else:
+        seed_str = TODAY.isoformat()
+
+    daily_list = util.load_list(daily_file(TODAY.weekday())) if penance_freq == 0 else []
     combined_list = everyday_list + daily_list
 
     def score(item):
         h = hashlib.sha256(
-            (TODAY.isoformat() + str(item)).encode()
+            (seed_str + repr(item)).encode()
         ).hexdigest()
         return int(h, 16)
 
@@ -261,7 +272,7 @@ def edit_lists_curses(stdscr, everyday_list, first_time=False):
         y = 4
         if not first_time:
             util.safe_addstr(stdscr, y, 0, " 3) Clear all lists")
-            y += 1
+            y += 2
         util.safe_addstr(stdscr, y, 0, " d) -> Finish setup! ->" if first_time else " b) <- Back <-")
         y += 1
         util.safe_addstr(stdscr, y, 0, "-" * WINDOW_WIDTH)
@@ -404,20 +415,30 @@ def settings_curses(stdscr):
     am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
     int_am = dialogue.AnnoyanceManager(dialogue.NON_INTEGRAL_ANNOYANCE_MESSEGES)
 
+    penance_freq_changed = False
+
     while True:
         do_dialogue = ls.get_instance().get_property("do_dialogue", False)
         penance_count = ls.get_instance().get_property("penance_count", -1)
+
+        penance_freq = ls.get_instance().get_property("penance_freq", 0)
+        freq_value_count = 3
+        # bound it
+        penance_freq = max(min(penance_freq, freq_value_count - 1), 0)
+        penance_freq_options = ["#2DAILY# (default)", "#4WEEKLY#", "#1MONTHLY#"]
+        penance_freq_str = penance_freq_options[penance_freq]
 
         stdscr.clear()
         util.safe_addstr(stdscr, 0, 0, "Settings", curses.color_pair(3) | curses.A_BOLD)
         util.safe_addstr(stdscr, 1, 0, "-" * WINDOW_WIDTH)
         util.safe_addstr(stdscr, 2, 0, " 0) Edit name & gender (for dialogue)")
-        util.safe_addstr(stdscr, 3, 0, f" 1) Set daily penance count" + (f" (current: {penance_count})" if penance_count > 0 else ""))
-        util.safe_addstr_tokenized(stdscr, 4, 0, " 2) Toggle dialogue: " + ("(ON)" if do_dialogue else "(OFF - #1Good choice#.)"))
-        util.safe_addstr(stdscr, 5, 0, " r) Reset to defaults")
-        util.safe_addstr(stdscr, 6, 0, " b) <- Back <-")
-        util.safe_addstr(stdscr, 7, 0, "-" * WINDOW_WIDTH)
-        y = 8
+        util.safe_addstr_tokenized(stdscr, 3, 0, f" 1) Set daily penance count" + (f" (current: #4{penance_count}#)" if penance_count > 0 else ""))
+        util.safe_addstr_tokenized(stdscr, 4, 0, " 2) Randomize penances: " + penance_freq_str)
+        util.safe_addstr_tokenized(stdscr, 5, 0, " 3) Enable dialogue:    " + ("#2ON# (not yet implemented)" if do_dialogue else "#1OFF#"))
+        util.safe_addstr(stdscr, 7, 0, " r) Reset to defaults")
+        util.safe_addstr(stdscr, 8, 0, " b) <- Back <-")
+        util.safe_addstr(stdscr, 9, 0, "-" * WINDOW_WIDTH)
+        y = 10
         choice = util.curses_input(stdscr, "> ", y, 0)
         if choice == "0":
             util.clear_effect(stdscr)
@@ -441,6 +462,9 @@ def settings_curses(stdscr):
                 util.safe_addstr(stdscr, y, 0, int_am.bother())
                 util.f_getch(stdscr)
         elif choice == "2":
+            ls.get_instance().set_property("penance_freq", (penance_freq + 1) % freq_value_count)
+            penance_freq_changed = True
+        elif choice == "3":
             ls.get_instance().set_property("do_dialogue", not do_dialogue)
         elif choice == "r":
             util.safe_clear_line(stdscr, y)
@@ -465,6 +489,14 @@ def settings_curses(stdscr):
                 util.f_getch(stdscr)
                 # continue loop
         elif choice == "b":
+            if penance_freq_changed and penance_freq > 0:
+                # Require re-roll
+                ls.get_instance().set_property("last_roll", "")
+                ls.get_instance().set_property("reroll", True)
+                # Warn of effects
+                util.safe_addstr_tokenized(stdscr, y+1, 0, "Because (2) is " + penance_freq_options[penance_freq] + ", daily lists will be *ignored*! Press any key.")
+                stdscr.refresh()
+                util.f_getch(stdscr)
             util.clear_effect(stdscr)
             break # Returns to edit_lists_curses
         elif choice == "__KEY_RESIZE__":
@@ -525,7 +557,7 @@ def personal_stuff_curses(stdscr, q_offset=0):
         }
     ]
 
-    spec = {"word_delays":[0.05], "char_delays":[0.03, 0.02], "br_delays":[0.09, 0.9, 0.15]}
+    spec = {"word_delays":[0.05], "char_delays":[0.02, 0.01], "br_delays":[0.09, 0.9, 0.15]}
 
     q_index = 0 + q_offset
 
@@ -659,10 +691,11 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
         util.safe_addstr(stdscr, 3, 0, " 2) Edit penance lists")
         util.safe_addstr(stdscr, 4, 0, " 3) Settings")
         util.safe_addstr(stdscr, 5, 0, " 4) What even is this?")
-        util.safe_addstr_tokenized(stdscr, 6, 0, " b) <- Quit <-")
-        util.safe_addstr(stdscr, 7, 0, "-" * WINDOW_WIDTH)
+        util.safe_addstr_tokenized(stdscr, 7, 0, " b) <- Quit <-")
+        util.safe_addstr(stdscr, 8, 0, "-" * WINDOW_WIDTH)
 
-        choice = util.curses_input(stdscr, "> ", 8, 0)
+        y = 9
+        choice = util.curses_input(stdscr, "> ", y, 0)
 
         if choice == "1":
             util.clear_effect(stdscr)
@@ -685,31 +718,34 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
         elif choice == "b":
             did_joke = ls.get_instance().get_property("did_quit_joke", False)
             if not did_joke:
-                util.safe_addstr(stdscr, 8, 0, "Hey! are you sure you want to quit? [y/n]")
+                util.safe_addstr(stdscr, y, 0, "Hey! Are you sure you want to quit? [y/n]")
                 # next line refreshes screen so no direct call required
-                choice_2 = util.curses_input(stdscr, "> ", 9, 0)
+                choice_2 = util.curses_input(stdscr, "> ", y+1, 0)
                 if len(choice_2) < 1 or (len(choice_2) > 0 and choice_2.lower()[0] != "y"):
-                    util.safe_clear_line(stdscr, 8)
-                    util.safe_addstr(stdscr, 8, 0, "Oh, that's a relief.")
+                    util.safe_clear_line(stdscr, y)
+                    util.safe_addstr(stdscr, y, 0, "Oh, that's a relief.")
                     stdscr.refresh()
                     util.safe_sleep(stdscr, 1.2)
                     continue
                 # Yep, we straight up ignore it otherwise.
-                util.safe_addstr_tokenized(stdscr, 10, 0, "Are you _positive_? [Y/N]")
-                choice_3 = util.curses_input(stdscr, "> ", 11, 0)
+                util.safe_addstr_tokenized(stdscr, y+2, 0, "Are you _positive_? [Y/N]")
+                choice_3 = util.curses_input(stdscr, "> ", y+3, 0)
                 if len(choice_3) < 1 or (len(choice_3) > 0 and choice_3.lower()[0] != "y"):
-                    util.safe_clear_line(stdscr, 10)
-                    util.safe_addstr(stdscr, 10, 0, "I always knew you were joking.")
+                    util.safe_clear_line(stdscr, y+2)
+                    util.safe_addstr(stdscr, y+2, 0, "I always knew you were joking.")
                     stdscr.refresh()
                     util.safe_sleep(stdscr, 1.2)
                     continue
+                # Exit
                 ls.get_instance().set_property("did_quit_joke", True)
+                util.ellipsis_effect(stdscr, "Fine", y+4, 0, RNG, iterations=1)
+                util.safe_sleep(stdscr, 0.3)
             break
         elif choice == "__KEY_RESIZE__":
             continue
         else:
-            util.safe_clear_line(stdscr, 8)
-            util.safe_addstr(stdscr, 8, 0, am.bother())
+            util.safe_clear_line(stdscr, y)
+            util.safe_addstr(stdscr, y, 0, am.bother())
             stdscr.refresh()
             util.f_getch(stdscr)
 
