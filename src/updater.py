@@ -64,24 +64,25 @@ def apply_pending_update():
 # ----------------------------
 # Download with progress bar
 # ----------------------------
-def download_with_progress(url, dest_path):
-    with urllib.request.urlopen(url) as response:
-        total = int(response.getheader('Content-Length', 0))
-        downloaded = 0
-        chunk_size = 8192
-        with open(dest_path, 'wb') as f:
-            while True:
-                chunk = response.read(chunk_size)
-                if not chunk:
-                    break
-                f.write(chunk)
-                downloaded += len(chunk)
-                if total:
-                    done = int(50 * downloaded / total)
-                    percent = int(100 * downloaded / total)
-                    bar = '[' + '=' * done + ' ' * (50 - done) + f'] {percent}%'
-                    print(f'\rDownloading update... {bar}', end='', flush=True)
-        print()
+def download_with_progress(urls, dest_paths):
+    for url, dest_path in zip(urls, dest_paths):
+        with urllib.request.urlopen(url) as response:
+            total = int(response.getheader('Content-Length', 0))
+            downloaded = 0
+            chunk_size = 8192
+            with open(dest_path, 'wb') as f:
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        done = int(50 * downloaded / total)
+                        percent = int(100 * downloaded / total)
+                        bar = '[' + '=' * done + ' ' * (50 - done) + f'] {percent}%'
+                        print(f'\rDownloading update... {bar}', end='', flush=True)
+            print()  # for new line after download
 
 # ----------------------------
 # Verify signature
@@ -142,9 +143,8 @@ def self_update() -> bool:
             zip_path = os.path.join(tmpdir, zip_name)
             sig_path = os.path.join(tmpdir, sig_name)
 
-            # Download files
-            download_with_progress(asset_url, zip_path)
-            download_with_progress(sig_url, sig_path)
+            # Download both the zip and the signature
+            download_with_progress([asset_url, sig_url], [zip_path, sig_path])
 
             # Verify signature
             print("Verifying update signature...")
@@ -155,8 +155,14 @@ def self_update() -> bool:
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(tmpdir)
+                # Print the extracted files for debugging
+                print("Extracted files:", os.listdir(tmpdir))
 
             new_binary = os.path.join(tmpdir, "lentbuddy", binary_name)
+            if not os.path.exists(new_binary):
+                print(f"Error: {new_binary} does not exist.")
+                return False
+
             current_binary = os.path.realpath(sys.argv[0])
 
             print("Installing update...")
