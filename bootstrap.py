@@ -7,11 +7,13 @@ from src.updater import LOCKFILE, self_update, run_updater, VERSION
 
 # Create lock file to signal the app is running
 with open(LOCKFILE, "w") as f:
+    print(f"Creating lock file at {LOCKFILE} with PID {os.getpid()}")
     f.write(str(os.getpid()))
 
 # Ensure lock is removed on exit
 def remove_lock():
     try:
+        print("Cleaning up lock file...")
         os.remove(LOCKFILE)
     except FileNotFoundError:
         pass
