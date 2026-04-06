@@ -763,6 +763,14 @@ def main():
     #   - Isolate files on a per-client basis (so .lentbuddy/Jim/)
     #   - Reserve .lentbuddy/__local__ for local runs of the full app (frontend as well)
 
+    # TODO: Maybe classify penances by type (Prayer, Fast, or Alms) and allow users to
+    # choose what they are in the edit lists screen. Then, in settings, you might be able to
+    # choose the balance of each category (maybe 3 toggles with 3 percentage values each of like 25, 50, 75)
+    # for the rolls.
+    # 
+    # This would prevent the rolls from giving you 2 prayer penances and no alms,
+    # for example, if you wanted a more balanced penance list.
+
     everyday_list = []
 
     ls.get_instance().load()
