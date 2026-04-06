@@ -1,31 +1,44 @@
-import platform
+import tempfile
+import atexit
+import os
 import sys
 from src.main import main
-from src.updater import self_update, run_updater, VERSION
+from src.updater import LOCKFILE, self_update, run_updater, VERSION
+
+# Create lock file to signal the app is running
+with open(LOCKFILE, "w") as f:
+    f.write(str(os.getpid()))
+
+# Ensure lock is removed on exit
+def remove_lock():
+    try:
+        os.remove(LOCKFILE)
+    except FileNotFoundError:
+        pass
+atexit.register(remove_lock)
 
 def _init_app():
+    # If updater mode, run updater and exit
     if "--apply-update" in sys.argv:
         run_updater()
         sys.exit(0)
 
+    # CLI options
     args = sys.argv[1:]
-
-    # Check if there's at least one argument
     if args:
         if args[0] in ("--version", "-v", "version"):
             print(f"lentbuddy v{VERSION} (by Urban-Elf)")
             return
         elif args[0] in ("--help", "-h", "help"):
             print("Usage: lentbuddy [options]")
-            print("Options:")
-            print("  --version, -v, version   Show version information")
-            print("  --help, -h, help        Show this help message")
+            print("Options:\n  --version, -v, version   Show version\n  --help, -h, help        Show help")
             return
 
+    # Self-update
     if self_update():
         return
 
-    # Start app
+    # Start main app
     main()
 
 if __name__ == "__main__":
