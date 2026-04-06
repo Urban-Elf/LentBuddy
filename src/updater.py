@@ -23,7 +23,7 @@ def get_current_executable():
 # -------------------
 # Updater subprocess
 # -------------------
-LOCKFILE = os.path.join(os.getenv("TEMP", "/tmp"), "lentbuddy_update.lock")
+LOCKFILE = os.path.join(os.getenv("TEMP", "/tmp"), "_lentbuddy_update.lock")
 
 def verbose(msg):
     """Print with PID info and flush immediately."""
@@ -239,9 +239,7 @@ def self_update() -> bool:
             "--apply-update",
             current_binary,
             staged_binary
-        ],
-        close_fds=True,
-        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+        ], close_fds=True)
 
         print("Exiting for update...")
         sys.exit(0)
