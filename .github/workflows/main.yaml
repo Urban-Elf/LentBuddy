@@ -42,7 +42,6 @@ jobs:
           echo "os_name=windows" >> $GITHUB_ENV
         elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
           echo "os_name=macos" >> $GITHUB_ENV
-        fi
 
     - name: Build executable
       shell: bash
@@ -66,7 +65,6 @@ jobs:
           cp dist/lentbuddy.exe output/lentbuddy.exe
         else
           cp dist/lentbuddy output/lentbuddy
-        fi
 
     - name: Upload raw artifact
       uses: actions/upload-artifact@v4
@@ -222,12 +220,12 @@ jobs:
       with:
         name: packaged
         path: |
-          lentbuddy-linux.zip
-          lentbuddy-linux.zip.sig
-          lentbuddy-macos.zip
-          lentbuddy-macos.zip.sig
-          lentbuddy-windows.zip
-          lentbuddy-windows.zip.sig
+          ../../lentbuddy-linux.zip
+          ../../lentbuddy-linux.zip.sig
+          ../../lentbuddy-macos.zip
+          ../../lentbuddy-macos.zip.sig
+          ../../lentbuddy-windows.zip
+          ../../lentbuddy-windows.zip.sig
 
   release:
     if: github.event_name == 'push'
@@ -240,9 +238,6 @@ jobs:
       with:
         name: packaged
         path: release-files
-
-    - name: Extract artifacts
-      run: unzip -o release-files/packaged.zip -d release-files
 
     - name: Get latest release tag
       id: get_latest_release
@@ -257,6 +252,15 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ env.latest_tag }}
-        file: release-files/*.{zip,zip.sig}
+        file: release-files/*.zip
+        file_glob: true
+        overwrite: true
+
+    - name: Upload signature files
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ env.latest_tag }}
+        file: release-files/*.zip.sig
         file_glob: true
         overwrite: true
