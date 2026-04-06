@@ -11,11 +11,12 @@ def _init_app():
         print(f"lentbuddy v{VERSION} (by Urban-Elf)")
         return
     
-    if platform.system().lower() == "windows":
-        apply_pending_update()
+    # TODO: Doesn't work in practice, going to have to make a separate process spawn to apply the update.
+    #if platform.system().lower() == "windows":
+    #    apply_pending_update()
 
-    if self_update():
-        return
+    #if self_update():
+    #    return
 
     main()
 

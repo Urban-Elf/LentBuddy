@@ -13,7 +13,7 @@ from nacl.exceptions import BadSignatureError
 # REMEMBER TO UPDATE THIS EACH RELEASE
 VERSION = "1.0.1"
 
-REPO = "Urban-Elf/LentBuddy"
+REPO = "owner/repo"
 
 # ----------------------------
 # Public key for signature verification (hex)
@@ -46,35 +46,13 @@ def get_platform_asset():
     else:
         return "lentbuddy-linux.zip", "lentbuddy"
 
-def get_install_location():
-    system = platform.system().lower()
-    file_map = {
-        "windows": "INSTALL_DIR_WINDOWS.txt",
-        "darwin": "INSTALL_DIR_MACOS.txt",
-        "linux": "INSTALL_DIR_LINUX.txt",
-    }
-    filename = file_map.get(system)
-    if not filename:
-        return None
-
-    # Determine base path depending on frozen vs script
-    if not NOT_FROZEN:
-        # PyInstaller extracts files to _MEIPASS
-        base_path = os.path.join(sys._MEIPASS, "res")
-    else:
-        base_path = "res"
-
-    path = os.path.join(base_path, filename)
-    with open(path, "r") as f:
-        return f.read().strip()
-
 # ----------------------------
-# Windows: apply pending update
+# apply pending update
 # ----------------------------
 def apply_pending_update():
     if NOT_FROZEN:
         return
-    current = get_install_location()
+    current = get_current_executable()
     new_file = current + ".new"
     if os.path.exists(new_file):
         try:
@@ -82,6 +60,19 @@ def apply_pending_update():
             print("Updated to latest version.")
         except Exception:
             pass
+
+def get_current_executable():
+    # If frozen (PyInstaller)
+    if getattr(sys, "frozen", False):
+        return os.path.realpath(sys.executable)
+    
+    # If running in dev / script mode
+    path = shutil.which(sys.argv[0])
+    if path:
+        return os.path.realpath(path)
+    else:
+        # fallback to argv[0] absolute
+        return os.path.realpath(sys.argv[0])
 
 # ----------------------------
 # Download with progress bar
@@ -190,16 +181,15 @@ def self_update() -> bool:
                 print(f"Error: {new_binary} does not exist.")
                 return False
 
-            current_binary = sys.argv[0]
+            current_binary = os.path.realpath(sys.argv[0])
             print(current_binary)
 
             print("Installing update...")
-            if platform.system().lower() == "windows":
-                shutil.copy2(new_binary, current_binary + ".new")
-            else:
-                print("Copying from {} to {}".format(new_binary, current_binary))
-                shutil.copy2(new_binary, current_binary)
-                os.chmod(current_binary, 0o755)
+
+            print("Copying from {} to {}".format(new_binary, current_binary))
+            shutil.copy2(new_binary, current_binary + ".new")
+            os.chmod(current_binary, 0o755)
+            
             print("Update complete. Please restart the app (press [Return] to exit).")
             # Wait for return to ensure user sees the message before app exits
             input()
