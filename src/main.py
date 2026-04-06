@@ -230,7 +230,7 @@ def penance_screen_curses(stdscr, everyday_list, count, view=False):
 
     util.clear_effect(stdscr)
 
-def edit_lists_curses(stdscr, everyday_list, first_time=False):
+def edit_lists_curses(stdscr, everyday_list: list[str], first_time=False):
     am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     clear_set = dialogue.DialogueSet(D_MANAGER,
@@ -280,6 +280,9 @@ def edit_lists_curses(stdscr, everyday_list, first_time=False):
         choice = util.curses_input(stdscr, "> ", y, 0)
         if choice == "1":
             result = edit_list_curses(stdscr, "EVERYDAY", "These penances are _always able_ to be rolled.", everyday_list)
+            # Update argument-passed list and save
+            everyday_list.clear()
+            everyday_list.extend(result[0])
             util.save_list(EVERDAY_LIST, result[0])
             if not changed:
                 changed = result[1]
