@@ -28,7 +28,7 @@ jobs:
     - name: Install pyinstaller (and UPX for Linux)
       shell: bash
       run: |
-        pip install pyinstaller
+        pip install pyinstaller pynacl
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
           sudo apt-get update && sudo apt-get install -y upx
         fi
@@ -84,7 +84,6 @@ jobs:
       with:
         path: artifacts
 
-    # -------- Linux/macOS packaging --------
     - name: Package Linux
       shell: bash
       run: |
@@ -109,10 +108,10 @@ jobs:
         cat << 'EOF' > pkg/linux/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        This script will install lentbuddy into ~/.local/bin.
-        Make sure this directory is in your PATH before running lentbuddy.
-        Review this installer before running it.
-        Press any key at the end to close the window.
+        Installs lentbuddy into ~/.local/bin.
+        Make sure this directory is in your PATH.
+        Review this installer before running.
+        Press any key at the end to close.
         EOF
 
         cd pkg/linux
@@ -142,16 +141,15 @@ jobs:
         cat << 'EOF' > pkg/macos/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        This script will install lentbuddy into ~/.local/bin.
-        Make sure this directory is in your PATH before running lentbuddy.
-        Review this installer before running it.
-        Press any key at the end to close the window.
+        Installs lentbuddy into ~/.local/bin.
+        Make sure this directory is in your PATH.
+        Review this installer before running.
+        Press any key at the end to close.
         EOF
 
         cd pkg/macos
         zip -r ../../lentbuddy-macos.zip lentbuddy
 
-    # -------- Windows packaging --------
     - name: Package Windows
       shell: bash
       run: |
@@ -184,22 +182,44 @@ jobs:
         cat << 'EOF' > pkg/windows/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        This batch script will install lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
-        and attempt to add it to your PATH. Review before running.
-        The script pauses at the end so you can see the messages.
+        Installs lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
+        and attempts to add it to your PATH. Review before running.
         EOF
 
         cd pkg/windows
         zip -r ../../lentbuddy-windows.zip lentbuddy
 
-    - name: Upload packaged artifacts
+    # -------- Signing step --------
+    - name: Sign artifacts
+      shell: python
+      env:
+        PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+      run: |
+        import os, sys
+        from pathlib import Path
+        from nacl.signing import SigningKey
+
+        signing_key = SigningKey(bytes.fromhex(os.environ["PRIVATE_KEY"]))
+
+        for zip_file in Path('.').glob('../../*.zip'):
+            with open(zip_file, 'rb') as f:
+                data = f.read()
+            sig = signing_key.sign(data).signature
+            with open(zip_file.with_suffix('.zip.sig'), 'wb') as f:
+                f.write(sig)
+                print(f"Created signature for {zip_file.name}")
+
+    - name: Upload packaged artifacts + signatures
       uses: actions/upload-artifact@v4
       with:
         name: packaged
         path: |
           lentbuddy-linux.zip
+          lentbuddy-linux.zip.sig
           lentbuddy-macos.zip
+          lentbuddy-macos.zip.sig
           lentbuddy-windows.zip
+          lentbuddy-windows.zip.sig
 
   release:
     if: github.event_name == 'push'
@@ -221,7 +241,7 @@ jobs:
         latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
         echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-    - name: Upload archives to release
+    - name: Upload archives and signatures to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
