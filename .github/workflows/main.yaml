@@ -25,7 +25,8 @@ jobs:
       with:
         python-version: 3.x
 
-    - name: Install pyinstaller
+    - name: Install pyinstaller (and UPX for Linux)
+      shell: bash
       run: |
         pip install pyinstaller
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
@@ -33,7 +34,6 @@ jobs:
         fi
 
     - name: Set OS-specific name
-      id: os-name
       shell: bash
       run: |
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
@@ -45,6 +45,7 @@ jobs:
         fi
 
     - name: Build executable
+      shell: bash
       run: |
         if [[ "${{ env.os_name }}" == "linux" ]]; then
           pyinstaller --onefile --strip --upx $(which upx) --name lentbuddy bootstrap.py
@@ -80,15 +81,15 @@ jobs:
 
     # -------- Linux/macOS packaging --------
     - name: Package Linux
+      shell: bash
       run: |
         mkdir -p pkg/linux/lentbuddy
         cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
 
-        # Installer script
+        # Installer script with key wait
         cat << 'EOF' > pkg/linux/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
-
         INSTALL_DIR="$HOME/.local/bin"
         mkdir -p "$INSTALL_DIR"
 
@@ -99,7 +100,6 @@ jobs:
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
         read -n 1 -s -r -p "Press any key to exit..."
         EOF
-
         chmod +x pkg/linux/lentbuddy/install.sh
 
         # README
@@ -118,6 +118,7 @@ jobs:
         zip -r ../../lentbuddy-linux.zip lentbuddy
 
     - name: Package macOS
+      shell: bash
       run: |
         mkdir -p pkg/macos/lentbuddy
         cp artifacts/lentbuddy-macos/lentbuddy pkg/macos/lentbuddy/lentbuddy
@@ -125,7 +126,6 @@ jobs:
         cat << 'EOF' > pkg/macos/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
-
         INSTALL_DIR="$HOME/.local/bin"
         mkdir -p "$INSTALL_DIR"
 
@@ -136,7 +136,6 @@ jobs:
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
         read -n 1 -s -r -p "Press any key to exit..."
         EOF
-
         chmod +x pkg/macos/lentbuddy/install.sh
 
         cat << 'EOF' > pkg/macos/lentbuddy/README.txt
@@ -155,6 +154,7 @@ jobs:
 
     # -------- Windows packaging --------
     - name: Package Windows
+      shell: bash
       run: |
         mkdir -p pkg/windows/lentbuddy
         cp artifacts/lentbuddy-windows/lentbuddy.exe pkg/windows/lentbuddy/lentbuddy.exe
