@@ -84,6 +84,14 @@ jobs:
       with:
         path: artifacts
 
+    # Read INSTALL_DIR for Linux
+    - name: Read Linux INSTALL_DIR
+      id: read_linux_dir
+      shell: bash
+      run: |
+        INSTALL_DIR=$(cat res/INSTALL_DIR_LINUX.txt)
+        echo "INSTALL_DIR=$INSTALL_DIR" >> $GITHUB_ENV
+
     - name: Package Linux
       shell: bash
       run: |
@@ -93,22 +101,16 @@ jobs:
         cat << 'EOF' > pkg/linux/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
-        INSTALL_DIR="$HOME/.local/bin"
-        mkdir -p "$INSTALL_DIR"
-
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
-
-        echo ""
-        echo "Done! Make sure $INSTALL_DIR is in your PATH."
-        read -n 1 -s -r -p "Press any key to exit..."
+        echo "Done!"
         EOF
         chmod +x pkg/linux/lentbuddy/install.sh
 
         cat << 'EOF' > pkg/linux/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        Installs lentbuddy into ~/.local/bin.
+        Installs lentbuddy into $INSTALL_DIR.
         Make sure this directory is in your PATH.
         Review this installer before running.
         Press any key at the end to close.
@@ -116,6 +118,14 @@ jobs:
 
         cd pkg/linux
         zip -r ../../lentbuddy-linux.zip lentbuddy
+
+    # Read INSTALL_DIR for macOS
+    - name: Read macOS INSTALL_DIR
+      id: read_macos_dir
+      shell: bash
+      run: |
+        INSTALL_DIR=$(cat res/INSTALL_DIR_MACOS.txt)
+        echo "INSTALL_DIR=$INSTALL_DIR" >> $GITHUB_ENV
 
     - name: Package macOS
       shell: bash
@@ -126,22 +136,16 @@ jobs:
         cat << 'EOF' > pkg/macos/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
-        INSTALL_DIR="$HOME/.local/bin"
-        mkdir -p "$INSTALL_DIR"
-
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
-
-        echo ""
-        echo "Done! Make sure $INSTALL_DIR is in your PATH."
-        read -n 1 -s -r -p "Press any key to exit..."
+        echo "Done!"
         EOF
         chmod +x pkg/macos/lentbuddy/install.sh
 
         cat << 'EOF' > pkg/macos/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        Installs lentbuddy into ~/.local/bin.
+        Installs lentbuddy into $INSTALL_DIR.
         Make sure this directory is in your PATH.
         Review this installer before running.
         Press any key at the end to close.
@@ -149,6 +153,14 @@ jobs:
 
         cd pkg/macos
         zip -r ../../lentbuddy-macos.zip lentbuddy
+
+    # Read INSTALL_DIR for Windows
+    - name: Read Windows INSTALL_DIR
+      id: read_windows_dir
+      shell: bash
+      run: |
+        INSTALL_DIR=$(cat res/INSTALL_DIR_WINDOWS.txt)
+        echo "INSTALL_DIR=$INSTALL_DIR" >> $GITHUB_ENV
 
     - name: Package Windows
       shell: bash
@@ -158,9 +170,7 @@ jobs:
 
         cat << 'EOF' > pkg/windows/lentbuddy/install.bat
         @echo off
-        set INSTALL_DIR=%LOCALAPPDATA%\Programs\lentbuddy
-
-        mkdir "%INSTALL_DIR%" 2>nul
+        set INSTALL_DIR=%INSTALL_DIR%
 
         echo Installing lentbuddy...
         copy /Y lentbuddy.exe "%INSTALL_DIR%\lentbuddy.exe" >nul
@@ -182,8 +192,8 @@ jobs:
         cat << 'EOF' > pkg/windows/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        Installs lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
-        and attempts to add it to your PATH. Review before running.
+        Installs lentbuddy into %INSTALL_DIR%.
+        Review this installer before running.
         EOF
 
         cd pkg/windows
