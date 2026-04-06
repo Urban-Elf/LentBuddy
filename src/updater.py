@@ -171,58 +171,55 @@ def self_update() -> bool:
         return False
 
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            zip_path = os.path.join(tmpdir, zip_name)
-            sig_path = os.path.join(tmpdir, sig_name)
+        tmpdir = tempfile.mkdtemp()
 
-            #print(zip_path)
-            #print(sig_path)
+        zip_path = os.path.join(tmpdir, zip_name)
+        sig_path = os.path.join(tmpdir, sig_name)
 
-            # Download both the zip and the signature
-            download_with_progress([asset_url, sig_url], [zip_path, sig_path])
+        # Download both the zip and the signature
+        download_with_progress([asset_url, sig_url], [zip_path, sig_path])
 
-            # Verify signature
-            print("Verifying update signature...")
-            if not verify_signature(zip_path, sig_path):
-                print("Signature verification failed! Update aborted.")
-                return False
-            print("Signature valid!")
+        # Verify signature
+        if not verify_signature(zip_path, sig_path):
+            print("Signature verification failed! Update aborted.")
+            return False
+        print("Signature is valid.")
 
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(tmpdir)
-                # Print the extracted files for debugging
-                print("Extracted files:", os.listdir(tmpdir))
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(tmpdir)
+            # Print the extracted files for debugging
+            #print("Extracted files:", os.listdir(tmpdir))
 
-            new_binary = os.path.join(tmpdir, "lentbuddy", binary_name)
-            #print(new_binary)
+        # Downloaded binary
+        new_binary = os.path.join(tmpdir, "lentbuddy", binary_name)
 
-            if not os.path.exists(new_binary):
-                print(f"Error: {new_binary} does not exist (missing from update).")
-                return False
+        if not os.path.exists(new_binary):
+            print(f"Error: {new_binary} does not exist (missing from update).")
+            return False
 
-            current_binary = get_current_executable()
-            print(f"Current binary: {current_binary}")
-            print("Installing update...")
-            new_binary_tmp = current_binary + ".new"
-            # Set executable permissions on the new binary before copying (important for Unix)
-            if platform.system() != "Windows":
-                os.chmod(new_binary_tmp, 0o755)
+        current_binary = get_current_executable()
+        print(f"Current binary: {current_binary}")
+        print("Installing update...")
+        new_binary_tmp = current_binary + ".new"
+        print("Copying from {} to {}".format(new_binary, new_binary_tmp))
+        # Stage the new binary by copying it to a temporary location next to the current binary
+        shutil.copy2(new_binary, new_binary_tmp)
+        # Set executable permissions on the new binary before copying (important for Unix)
+        if platform.system() != "Windows":
+            os.chmod(new_binary_tmp, 0o755)
 
-            # Stage the new binary by copying it to a temporary location next to the current binary
-            shutil.copy2(new_binary, new_binary_tmp)
-            print("Copying from {} to {}".format(new_binary, new_binary_tmp))
+        subprocess.Popen([
+            current_binary,
+            "--apply-update",
+            str(os.getpid()),
+            current_binary,
+            new_binary_tmp
+        ])
+        
+        print("Exiting for update...")
+        sys.exit(0)
 
-            print("Download complete. Please restart the app to apply changes.")
-
-            subprocess.Popen([
-                current_binary,
-                "--apply-update",
-                str(os.getpid()),
-                current_binary,
-                new_binary_tmp
-            ])
-            
-            return True
+        return True
 
     except Exception as e:
         print(f"Update failed: {e}")
