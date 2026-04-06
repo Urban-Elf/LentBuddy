@@ -190,6 +190,14 @@ jobs:
         zip -r ../../lentbuddy-windows.zip lentbuddy
 
     # -------- Signing step --------
+    - name: Set up Python for signing
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
+
+    - name: Install signing dependency
+      run: pip install pynacl
+
     - name: Sign artifacts
       shell: python
       env:
