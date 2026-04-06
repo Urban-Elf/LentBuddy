@@ -26,7 +26,11 @@ jobs:
         python-version: 3.x
 
     - name: Install pyinstaller
-      run: pip install pyinstaller
+      run: |
+        pip install pyinstaller
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          sudo apt-get update && sudo apt-get install -y upx
+        fi
 
     - name: Set OS-specific name
       id: os-name
@@ -41,7 +45,12 @@ jobs:
         fi
 
     - name: Build executable
-      run: pyinstaller --onefile --name lentbuddy bootstrap.py
+      run: |
+        if [[ "${{ env.os_name }}" == "linux" ]]; then
+          pyinstaller --onefile --strip --upx $(which upx) --name lentbuddy bootstrap.py
+        else
+          pyinstaller --onefile --name lentbuddy bootstrap.py
+        fi
 
     - name: Rename executable per OS
       shell: bash
@@ -75,6 +84,7 @@ jobs:
         mkdir -p pkg/linux/lentbuddy
         cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
 
+        # Installer script
         cat << 'EOF' > pkg/linux/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
@@ -85,10 +95,24 @@ jobs:
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
 
+        echo ""
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        read -n 1 -s -r -p "Press any key to exit..."
         EOF
 
         chmod +x pkg/linux/lentbuddy/install.sh
+
+        # README
+        cat << 'EOF' > pkg/linux/lentbuddy/README.txt
+        lentbuddy Installer
+        -------------------
+
+        This script will install lentbuddy into ~/.local/bin.
+        Make sure this directory is in your PATH before running lentbuddy.
+        Review this installer before running it.
+
+        Press any key at the end to close the window.
+        EOF
 
         cd pkg/linux
         zip -r ../../lentbuddy-linux.zip lentbuddy
@@ -108,10 +132,23 @@ jobs:
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
 
+        echo ""
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        read -n 1 -s -r -p "Press any key to exit..."
         EOF
 
         chmod +x pkg/macos/lentbuddy/install.sh
+
+        cat << 'EOF' > pkg/macos/lentbuddy/README.txt
+        lentbuddy Installer
+        -------------------
+
+        This script will install lentbuddy into ~/.local/bin.
+        Make sure this directory is in your PATH before running lentbuddy.
+        Review this installer before running it.
+
+        Press any key at the end to close the window.
+        EOF
 
         cd pkg/macos
         zip -r ../../lentbuddy-macos.zip lentbuddy
@@ -140,7 +177,20 @@ jobs:
             echo Already in PATH.
         )
 
+        echo.
         echo Done! Restart your terminal.
+        pause
+        EOF
+
+        # README
+        cat << 'EOF' > pkg/windows/lentbuddy/README.txt
+        lentbuddy Installer
+        -------------------
+
+        This batch script will install lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
+        and attempt to add it to your PATH. Review before running.
+
+        The script pauses at the end so you can see the messages.
         EOF
 
         cd pkg/windows
