@@ -21,7 +21,7 @@ REPO = "Urban-Elf/LentBuddy"
 PUBLIC_KEY_HEX = "a5da168851cb907bba8c5a54aac8a448626ebc57989066e022a3e0966c8f6a25"
 
 # Safety check for frozen state (PyInstaller) so dev environment doesn't try to apply updates
-IS_FROZEN = getattr(sys, 'frozen', False)
+IS_FROZEN = not getattr(sys, 'frozen', False)
 
 # ----------------------------
 # Version helpers
