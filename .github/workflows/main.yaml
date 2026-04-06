@@ -50,12 +50,12 @@ jobs:
         if [[ "${{ env.os_name }}" == "linux" ]]; then
           if command -v upx >/dev/null 2>&1; then
             UPX_PATH=$(which upx)
-            pyinstaller --onefile --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --strip --upx-dir "$UPX_PATH" --name lentbuddy bootstrap.py
+            pyinstaller --onefile --add-data "res/*:res" --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --strip --upx-dir "$UPX_PATH" --name lentbuddy bootstrap.py
           else
-            pyinstaller --onefile --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --strip --name lentbuddy bootstrap.py
+            pyinstaller --onefile --add-data "res/*:res" --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --strip --name lentbuddy bootstrap.py
           fi
         else
-          pyinstaller --onefile --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --name lentbuddy bootstrap.py
+          pyinstaller --onefile --add-data "res/*:res" --hidden-import=cffi --hidden-import=nacl.signing --collect-binaries=nacl --name lentbuddy bootstrap.py
         fi
       
     - name: Rename executable per OS

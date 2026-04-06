@@ -21,7 +21,7 @@ REPO = "Urban-Elf/LentBuddy"
 PUBLIC_KEY_HEX = "a5da168851cb907bba8c5a54aac8a448626ebc57989066e022a3e0966c8f6a25"
 
 # Safety check for frozen state (PyInstaller) so dev environment doesn't try to apply updates
-IS_FROZEN = not getattr(sys, 'frozen', False)
+NOT_FROZEN = not getattr(sys, 'frozen', False)
 
 # ----------------------------
 # Version helpers
@@ -46,13 +46,35 @@ def get_platform_asset():
     else:
         return "lentbuddy-linux.zip", "lentbuddy"
 
+def get_install_location():
+    system = platform.system().lower()
+    file_map = {
+        "windows": "INSTALL_DIR_WINDOWS.txt",
+        "darwin": "INSTALL_DIR_MACOS.txt",
+        "linux": "INSTALL_DIR_LINUX.txt",
+    }
+    filename = file_map.get(system)
+    if not filename:
+        return None
+
+    # Determine base path depending on frozen vs script
+    if not NOT_FROZEN:
+        # PyInstaller extracts files to _MEIPASS
+        base_path = os.path.join(sys._MEIPASS, "res")
+    else:
+        base_path = "res"
+
+    path = os.path.join(base_path, filename)
+    with open(path, "r") as f:
+        return f.read().strip()
+
 # ----------------------------
 # Windows: apply pending update
 # ----------------------------
 def apply_pending_update():
-    if IS_FROZEN:
+    if NOT_FROZEN:
         return
-    current = os.path.realpath(sys.argv[0])
+    current = get_install_location()
     new_file = current + ".new"
     if os.path.exists(new_file):
         try:
@@ -65,7 +87,6 @@ def apply_pending_update():
 # Download with progress bar
 # ----------------------------
 def download_with_progress(urls, dest_paths):
-    id = 0
     for url, dest_path in zip(urls, dest_paths):
         with urllib.request.urlopen(url) as response:
             total = int(response.getheader('Content-Length', 0))
@@ -82,9 +103,8 @@ def download_with_progress(urls, dest_paths):
                         done = int(50 * downloaded / total)
                         percent = int(100 * downloaded / total)
                         bar = '[' + '=' * done + ' ' * (50 - done) + f'] {percent}%'
-                        print(f'\rDownloading component [{id}]... {bar}', end='', flush=True)
+                        print(f'\rDownloading update... {bar}', end='', flush=True)
             print()  # for new line after download
-            id += 1
 
 # ----------------------------
 # Verify signature
@@ -105,9 +125,9 @@ def verify_signature(file_path, sig_path):
 # Self-update logic
 # ----------------------------
 def self_update() -> bool:
-    if IS_FROZEN:
-        print("Running in development mode, skipping update check.")
-        return False
+    #if IS_FROZEN:
+    #    print("Running in development mode, skipping update check.")
+    #    return False
 
     print("Checking for updates...")
     try:
@@ -145,8 +165,8 @@ def self_update() -> bool:
             zip_path = os.path.join(tmpdir, zip_name)
             sig_path = os.path.join(tmpdir, sig_name)
 
-            print(zip_path)
-            print(sig_path)
+            #print(zip_path)
+            #print(sig_path)
 
             # Download both the zip and the signature
             download_with_progress([asset_url, sig_url], [zip_path, sig_path])
@@ -164,19 +184,20 @@ def self_update() -> bool:
                 print("Extracted files:", os.listdir(tmpdir))
 
             new_binary = os.path.join(tmpdir, "lentbuddy", binary_name)
-            print(new_binary)
+            #print(new_binary)
 
             if not os.path.exists(new_binary):
                 print(f"Error: {new_binary} does not exist.")
                 return False
 
-            current_binary = os.path.realpath(sys.argv[0])
+            current_binary = sys.argv[0]
             print(current_binary)
 
             print("Installing update...")
             if platform.system().lower() == "windows":
                 shutil.copy2(new_binary, current_binary + ".new")
             else:
+                print("Copying from {} to {}".format(new_binary, current_binary))
                 shutil.copy2(new_binary, current_binary)
                 os.chmod(current_binary, 0o755)
             print("Update complete. Please restart the app (press [Return] to exit).")
