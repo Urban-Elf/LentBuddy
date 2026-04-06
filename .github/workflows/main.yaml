@@ -203,31 +203,29 @@ jobs:
       env:
         PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
       run: |
-        import os, sys
+        import os
         from pathlib import Path
         from nacl.signing import SigningKey
 
         signing_key = SigningKey(bytes.fromhex(os.environ["PRIVATE_KEY"]))
 
-        for zip_file in Path('.').glob('../../*.zip'):
+        # Sign zip files
+        for zip_file in Path('.').glob('*.zip'):
             with open(zip_file, 'rb') as f:
                 data = f.read()
             sig = signing_key.sign(data).signature
-            with open(zip_file.with_suffix('.zip.sig'), 'wb') as f:
+            sig_file = zip_file.with_suffix(zip_file.suffix + '.sig')
+            with open(sig_file, 'wb') as f:
                 f.write(sig)
-                print(f"Created signature for {zip_file.name}")
+            print(f"Created signature for {zip_file.name}")
 
     - name: Upload packaged artifacts + signatures
       uses: actions/upload-artifact@v4
       with:
         name: packaged
         path: |
-          lentbuddy-linux.zip
-          lentbuddy-linux.zip.sig
-          lentbuddy-macos.zip
-          lentbuddy-macos.zip.sig
-          lentbuddy-windows.zip
-          lentbuddy-windows.zip.sig
+          *.zip
+          *.zip.sig
 
   release:
     if: github.event_name == 'push'
