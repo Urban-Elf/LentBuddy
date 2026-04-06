@@ -11,7 +11,7 @@ from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignatureError
 
 # REMEMBER TO UPDATE THIS EACH RELEASE
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 REPO = "Urban-Elf/LentBuddy"
 
