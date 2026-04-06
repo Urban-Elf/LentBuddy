@@ -241,6 +241,9 @@ jobs:
         name: packaged
         path: release-files
 
+    - name: Extract artifacts
+      run: unzip -o release-files/packaged.zip -d release-files
+
     - name: Get latest release tag
       id: get_latest_release
       env:
