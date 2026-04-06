@@ -112,6 +112,8 @@ jobs:
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
         echo ""
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        echo "You can now type 'lentbuddy' in a terminal to run the app."
+        echo ""
         read -n 1 -s -r -p "Press any key to exit..."
         EOF
         chmod +x pkg/linux/lentbuddy/install.sh
@@ -149,6 +151,8 @@ jobs:
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
         echo ""
         echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        echo "You can now type 'lentbuddy' in a terminal to run the app."
+        echo ""
         read -n 1 -s -r -p "Press any key to exit..."
         EOF
         chmod +x pkg/macos/lentbuddy/install.sh
@@ -196,9 +200,10 @@ jobs:
         ) else (
             echo Already in PATH.
         )
-
         echo.
-        echo Done! Restart your terminal.
+        echo Done!
+        echo You can now type 'lentbuddy' in Command Prompt to run the app.
+        echo.
         pause
         EOF
 
