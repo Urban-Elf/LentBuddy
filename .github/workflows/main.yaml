@@ -196,7 +196,9 @@ jobs:
         python-version: 3.x
 
     - name: Install signing dependency
-      run: pip install pynacl
+      run: |
+        pip install cffi
+        pip install pynacl
 
     - name: Sign artifacts
       shell: python
