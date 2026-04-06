@@ -172,9 +172,10 @@ jobs:
         mkdir -p pkg/windows/lentbuddy
         cp artifacts/lentbuddy-windows/lentbuddy.exe pkg/windows/lentbuddy/lentbuddy.exe
 
+        # Directly embed INSTALL_DIR value into the batch script
         cat << EOF > pkg/windows/lentbuddy/install.bat
         @echo off
-        set INSTALL_DIR=%INSTALL_DIR%
+        set INSTALL_DIR=$INSTALL_DIR
 
         echo Installing lentbuddy...
         copy /Y lentbuddy.exe "%INSTALL_DIR%\lentbuddy.exe" >nul
@@ -196,7 +197,7 @@ jobs:
         cat << EOF > pkg/windows/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-        Installs lentbuddy into %INSTALL_DIR%.
+        Installs lentbuddy into $INSTALL_DIR.
         Review this installer before running.
         EOF
 
