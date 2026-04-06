@@ -65,6 +65,7 @@ def apply_pending_update():
 # Download with progress bar
 # ----------------------------
 def download_with_progress(urls, dest_paths):
+    id = 0
     for url, dest_path in zip(urls, dest_paths):
         with urllib.request.urlopen(url) as response:
             total = int(response.getheader('Content-Length', 0))
@@ -81,8 +82,9 @@ def download_with_progress(urls, dest_paths):
                         done = int(50 * downloaded / total)
                         percent = int(100 * downloaded / total)
                         bar = '[' + '=' * done + ' ' * (50 - done) + f'] {percent}%'
-                        print(f'\rDownloading update... {bar}', end='', flush=True)
+                        print(f'\rDownloading component [{id}]... {bar}', end='', flush=True)
             print()  # for new line after download
+            id += 1
 
 # ----------------------------
 # Verify signature
@@ -143,6 +145,9 @@ def self_update() -> bool:
             zip_path = os.path.join(tmpdir, zip_name)
             sig_path = os.path.join(tmpdir, sig_name)
 
+            print(zip_path)
+            print(sig_path)
+
             # Download both the zip and the signature
             download_with_progress([asset_url, sig_url], [zip_path, sig_path])
 
@@ -159,11 +164,14 @@ def self_update() -> bool:
                 print("Extracted files:", os.listdir(tmpdir))
 
             new_binary = os.path.join(tmpdir, "lentbuddy", binary_name)
+            print(new_binary)
+
             if not os.path.exists(new_binary):
                 print(f"Error: {new_binary} does not exist.")
                 return False
 
             current_binary = os.path.realpath(sys.argv[0])
+            print(current_binary)
 
             print("Installing update...")
             if platform.system().lower() == "windows":
