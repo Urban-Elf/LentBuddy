@@ -107,7 +107,9 @@ jobs:
         set -e
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
-        echo "Done!"
+        echo ""
+        echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        read -n 1 -s -r -p "Press any key to exit..."
         EOF
         chmod +x pkg/linux/lentbuddy/install.sh
 
@@ -142,7 +144,9 @@ jobs:
         set -e
         echo "Installing lentbuddy..."
         install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
-        echo "Done!"
+        echo ""
+        echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        read -n 1 -s -r -p "Press any key to exit..."
         EOF
         chmod +x pkg/macos/lentbuddy/install.sh
 
