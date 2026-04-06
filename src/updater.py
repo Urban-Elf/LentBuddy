@@ -233,9 +233,9 @@ def self_update() -> bool:
         staged_binary = current_binary + ".new"
         shutil.copy2(new_binary, staged_binary)
 
-        # Launch updater subprocess using lockfile
+        # Launch updater subprocess ON STAGED BINARY using lockfile
         subprocess.Popen([
-            current_binary,
+            staged_binary,
             "--apply-update",
             current_binary,
             staged_binary
