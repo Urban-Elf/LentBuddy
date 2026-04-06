@@ -1,7 +1,9 @@
 import os
+import subprocess
 import sys
 import platform
 import tempfile
+import time
 import urllib.request
 import json
 import shutil
@@ -13,7 +15,7 @@ from nacl.exceptions import BadSignatureError
 # REMEMBER TO UPDATE THIS EACH RELEASE
 VERSION = "1.0.1"
 
-REPO = "owner/repo"
+REPO = "Urban-Elf/LentBuddy"
 
 # ----------------------------
 # Public key for signature verification (hex)
@@ -49,23 +51,40 @@ def get_platform_asset():
 # ----------------------------
 # apply pending update
 # ----------------------------
-def apply_pending_update():
-    if NOT_FROZEN:
-        return
-    current = get_current_executable()
-    new_file = current + ".new"
-    if os.path.exists(new_file):
+def run_updater():
+    import sys
+    import os
+
+    _, _, pid, current_exe, new_exe = sys.argv
+
+    pid = int(pid)
+
+    print(f"Updater started. Waiting for PID {pid} to exit...")
+
+    # Wait for main process to exit
+    while True:
         try:
-            os.replace(new_file, current)
-            print("Updated to latest version.")
-        except Exception:
-            pass
+            os.kill(pid, 0)
+            time.sleep(0.5)
+        except OSError:
+            break  # process is gone
+
+    print("Main process exited. Applying update...")
+
+    # Retry replace (Windows can lag a bit)
+    for _ in range(10):
+        try:
+            os.replace(new_exe, current_exe)
+            break
+        except PermissionError:
+            time.sleep(0.5)
+    else:
+        print("Failed to replace executable.")
+        return
+
+    print("Update applied.")
 
 def get_current_executable():
-    # If frozen (PyInstaller)
-    if getattr(sys, "frozen", False):
-        return os.path.realpath(sys.executable)
-    
     # If running in dev / script mode
     path = shutil.which(sys.argv[0])
     if path:
@@ -116,9 +135,9 @@ def verify_signature(file_path, sig_path):
 # Self-update logic
 # ----------------------------
 def self_update() -> bool:
-    #if IS_FROZEN:
-    #    print("Running in development mode, skipping update check.")
-    #    return False
+    if NOT_FROZEN:
+        print("Running in project mode, skipping update check.")
+        return False
 
     print("Checking for updates...")
     try:
@@ -178,21 +197,31 @@ def self_update() -> bool:
             #print(new_binary)
 
             if not os.path.exists(new_binary):
-                print(f"Error: {new_binary} does not exist.")
+                print(f"Error: {new_binary} does not exist (missing from update).")
                 return False
 
-            current_binary = os.path.realpath(sys.argv[0])
-            print(current_binary)
-
+            current_binary = get_current_executable()
+            print(f"Current binary: {current_binary}")
             print("Installing update...")
+            new_binary_tmp = current_binary + ".new"
+            # Set executable permissions on the new binary before copying (important for Unix)
+            if platform.system() != "Windows":
+                os.chmod(new_binary_tmp, 0o755)
 
-            print("Copying from {} to {}".format(new_binary, current_binary))
-            shutil.copy2(new_binary, current_binary + ".new")
-            os.chmod(current_binary, 0o755)
+            # Stage the new binary by copying it to a temporary location next to the current binary
+            shutil.copy2(new_binary, new_binary_tmp)
+            print("Copying from {} to {}".format(new_binary, new_binary_tmp))
+
+            print("Download complete. Please restart the app to apply changes.")
+
+            subprocess.Popen([
+                current_binary,
+                "--apply-update",
+                str(os.getpid()),
+                current_binary,
+                new_binary_tmp
+            ])
             
-            print("Update complete. Please restart the app (press [Return] to exit).")
-            # Wait for return to ensure user sees the message before app exits
-            input()
             return True
 
     except Exception as e:
