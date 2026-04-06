@@ -11,7 +11,7 @@ import zipfile
 from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignatureError
 
-LOCKFILE = os.path.join(tempfile.gettempdir(), "lentbuddy_update.lock")
+#LOCKFILE = os.path.join(tempfile.gettempdir(), "lentbuddy_update.lock")
 VERSION = "1.0.1"
 REPO = "Urban-Elf/LentBuddy"
 PUBLIC_KEY_HEX = "a5da168851cb907bba8c5a54aac8a448626ebc57989066e022a3e0966c8f6a25"
@@ -23,34 +23,110 @@ def get_current_executable():
 # -------------------
 # Updater subprocess
 # -------------------
+LOCKFILE = os.path.join(os.getenv("TEMP", "/tmp"), "lentbuddy_update.lock")
+
+def verbose(msg):
+    """Print with PID info and flush immediately."""
+    print(f"[PID {os.getpid()}] {msg}", flush=True)
+
 def run_updater():
-    _, _, current_exe, new_exe = sys.argv
+    if len(sys.argv) < 5:
+        verbose(f"Updater called with insufficient arguments: {sys.argv}")
+        sys.exit(1)
 
-    print("Updater started. Waiting for main app to exit...")
+    _, _, pid, current_exe, new_exe = sys.argv
+    pid = int(pid)
 
-    # Wait until lockfile is removed
-    while os.path.exists(LOCKFILE):
-        time.sleep(0.5)
+    verbose(f"Updater started. Waiting for PID {pid} to exit...")
+    verbose(f"Current lockfile path: {LOCKFILE}")
 
-    print("Main process exited. Applying update...")
-
-    # Retry replacement (Windows can lock files briefly)
-    for _ in range(10):
+    # Check if lock file exists before loop
+    if os.path.exists(LOCKFILE):
+        verbose(f"Lock file exists at startup. Content:")
         try:
+            with open(LOCKFILE, "r") as f:
+                content = f.read().strip()
+                verbose(f"LOCKFILE content: '{content}'")
+        except Exception as e:
+            verbose(f"Failed to read lockfile: {e}")
+    else:
+        verbose("Lock file does NOT exist at startup.")
+
+    # Wait for main process to exit (PID-based, not lock file)
+    while True:
+        try:
+            os.kill(pid, 0)
+            verbose("Main process still alive, waiting 0.5s...")
+            time.sleep(0.5)
+        except OSError:
+            verbose("Main process has exited.")
+            break
+
+    # Confirm lock file status again
+    if os.path.exists(LOCKFILE):
+        verbose("Lock file still exists. Attempting to remove...")
+        try:
+            os.remove(LOCKFILE)
+            verbose("Lock file removed successfully.")
+        except Exception as e:
+            verbose(f"Failed to remove lock file: {e}")
+    else:
+        verbose("Lock file already gone.")
+
+    # Retry replacement (Windows may lock file for a bit)
+    for attempt in range(10):
+        try:
+            verbose(f"Attempt {attempt+1}: Replacing {current_exe} with {new_exe}")
             os.replace(new_exe, current_exe)
+            verbose("Replacement successful.")
             break
         except PermissionError:
+            verbose("PermissionError, retrying in 0.5s...")
             time.sleep(0.5)
     else:
-        print("Failed to replace executable.")
-        return
+        verbose("Failed to replace executable after 10 attempts.")
+        sys.exit(1)
 
+    # Unix executable permissions
     if platform.system() != "Windows":
-        os.chmod(current_exe, 0o755)
+        try:
+            os.chmod(current_exe, 0o755)
+            verbose("Set executable permissions on new binary.")
+        except Exception as e:
+            verbose(f"Failed to set permissions: {e}")
 
-    print("Update applied. Restarting app...")
-    subprocess.Popen([current_exe], close_fds=True,
-                     creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+    verbose("Update applied successfully. Exiting updater.")
+
+#def run_updater():
+#    _, _, current_exe, new_exe = sys.argv
+#
+#    print("Updater started. Waiting for main app to exit...")
+#
+#    # Wait until lockfile is removed
+#    while os.path.exists(LOCKFILE):
+#        time.sleep(0.5)
+#
+#    print("Main process exited. Applying update...")
+#
+#    # Retry replacement (Windows can lock files briefly)
+#    for _ in range(10):
+#        try:
+#            os.replace(new_exe, current_exe)
+#            break
+#        except PermissionError:
+#            time.sleep(0.5)
+#    else:
+#        print("Failed to replace executable.")
+#        return
+#
+#    if platform.system() != "Windows":
+#        os.chmod(current_exe, 0o755)
+#
+#    print("Update applied. Restarting app...")
+#    subprocess.Popen([current_exe], close_fds=True,
+#                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+
+
 
 # -------------------
 # Download + verify
