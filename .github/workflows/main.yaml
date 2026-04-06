@@ -2,8 +2,7 @@ name: Build Executable
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 permissions:
@@ -17,215 +16,213 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.x
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
 
-    - name: Install pyinstaller (and UPX for Linux)
-      shell: bash
-      run: |
-        pip install pyinstaller pynacl
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          sudo apt-get update && sudo apt-get install -y upx
-        fi
-
-    - name: Set OS-specific name
-      shell: bash
-      run: |
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          echo "os_name=linux" >> $GITHUB_ENV
-        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          echo "os_name=windows" >> $GITHUB_ENV
-        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-          echo "os_name=macos" >> $GITHUB_ENV
-
-    - name: Build executable
-      shell: bash
-      run: |
-        if [[ "${{ env.os_name }}" == "linux" ]]; then
-          if command -v upx >/dev/null 2>&1; then
-            UPX_PATH=$(which upx)
-            pyinstaller --onefile --strip --upx-dir "$UPX_PATH" --name lentbuddy bootstrap.py
-          else
-            pyinstaller --onefile --strip --name lentbuddy bootstrap.py
+      - name: Install pyinstaller (and UPX for Linux)
+        shell: bash
+        run: |
+          pip install pyinstaller pynacl
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get update && sudo apt-get install -y upx
           fi
-        else
-          pyinstaller --onefile --name lentbuddy bootstrap.py
-        fi
 
-    - name: Rename executable per OS
-      shell: bash
-      run: |
-        mkdir output
-        if [[ "${{ env.os_name }}" == "windows" ]]; then
-          cp dist/lentbuddy.exe output/lentbuddy.exe
-        else
-          cp dist/lentbuddy output/lentbuddy
+      - name: Set OS-specific name
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            echo "os_name=linux" >> $GITHUB_ENV
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            echo "os_name=windows" >> $GITHUB_ENV
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            echo "os_name=macos" >> $GITHUB_ENV
 
-    - name: Upload raw artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: lentbuddy-${{ env.os_name }}
-        path: output/*
+      - name: Build executable
+        shell: bash
+        run: |
+          if [[ "${{ env.os_name }}" == "linux" ]]; then
+            if command -v upx >/dev/null 2>&1; then
+              UPX_PATH=$(which upx)
+              pyinstaller --onefile --strip --upx-dir "$UPX_PATH" --name lentbuddy bootstrap.py
+            else
+              pyinstaller --onefile --strip --name lentbuddy bootstrap.py
+            fi
+          else
+            pyinstaller --onefile --name lentbuddy bootstrap.py
+
+      - name: Rename executable per OS
+        shell: bash
+        run: |
+          mkdir output
+          if [[ "${{ env.os_name }}" == "windows" ]]; then
+            cp dist/lentbuddy.exe output/lentbuddy.exe
+          else
+            cp dist/lentbuddy output/lentbuddy
+
+      - name: Upload raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lentbuddy-${{ env.os_name }}
+          path: output/*
 
   package:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-    - name: Download all build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-    - name: Package Linux
-      shell: bash
-      run: |
-        mkdir -p pkg/linux/lentbuddy
-        cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
+      - name: Package Linux
+        shell: bash
+        run: |
+          mkdir -p pkg/linux/lentbuddy
+          cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
 
-        cat << 'EOF' > pkg/linux/lentbuddy/install.sh
-        #!/usr/bin/env bash
-        set -e
-        INSTALL_DIR="$HOME/.local/bin"
-        mkdir -p "$INSTALL_DIR"
+          cat << 'EOF' > pkg/linux/lentbuddy/install.sh
+          #!/usr/bin/env bash
+          set -e
+          INSTALL_DIR="$HOME/.local/bin"
+          mkdir -p "$INSTALL_DIR"
 
-        echo "Installing lentbuddy..."
-        install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
+          echo "Installing lentbuddy..."
+          install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
 
-        echo ""
-        echo "Done! Make sure $INSTALL_DIR is in your PATH."
-        read -n 1 -s -r -p "Press any key to exit..."
-        EOF
-        chmod +x pkg/linux/lentbuddy/install.sh
+          echo ""
+          echo "Done! Make sure $INSTALL_DIR is in your PATH."
+          read -n 1 -s -r -p "Press any key to exit..."
+          EOF
+                    chmod +x pkg/linux/lentbuddy/install.sh
 
-        cat << 'EOF' > pkg/linux/lentbuddy/README.txt
-        lentbuddy Installer
-        -------------------
-        Installs lentbuddy into ~/.local/bin.
-        Make sure this directory is in your PATH.
-        Review this installer before running.
-        Press any key at the end to close.
-        EOF
+                    cat << 'EOF' > pkg/linux/lentbuddy/README.txt
+          lentbuddy Installer
+          -------------------
+          Installs lentbuddy into ~/.local/bin.
+          Make sure this directory is in your PATH.
+          Review this installer before running.
+          Press any key at the end to close.
+          EOF
 
-        cd pkg/linux
-        zip -r ../../lentbuddy-linux.zip lentbuddy
+          cd pkg/linux
+          zip -r ../../lentbuddy-linux.zip lentbuddy
 
-    - name: Package macOS
-      shell: bash
-      run: |
-        mkdir -p pkg/macos/lentbuddy
-        cp artifacts/lentbuddy-macos/lentbuddy pkg/macos/lentbuddy/lentbuddy
+      - name: Package macOS
+        shell: bash
+        run: |
+          mkdir -p pkg/macos/lentbuddy
+          cp artifacts/lentbuddy-macos/lentbuddy pkg/macos/lentbuddy/lentbuddy
 
-        cat << 'EOF' > pkg/macos/lentbuddy/install.sh
-        #!/usr/bin/env bash
-        set -e
-        INSTALL_DIR="$HOME/.local/bin"
-        mkdir -p "$INSTALL_DIR"
+          cat << 'EOF' > pkg/macos/lentbuddy/install.sh
+          #!/usr/bin/env bash
+          set -e
+          INSTALL_DIR="$HOME/.local/bin"
+          mkdir -p "$INSTALL_DIR"
 
-        echo "Installing lentbuddy..."
-        install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
+          echo "Installing lentbuddy..."
+          install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
 
-        echo ""
-        echo "Done! Make sure $INSTALL_DIR is in your PATH."
-        read -n 1 -s -r -p "Press any key to exit..."
-        EOF
-        chmod +x pkg/macos/lentbuddy/install.sh
+          echo ""
+          echo "Done! Make sure $INSTALL_DIR is in your PATH."
+          read -n 1 -s -r -p "Press any key to exit..."
+          EOF
+                    chmod +x pkg/macos/lentbuddy/install.sh
 
-        cat << 'EOF' > pkg/macos/lentbuddy/README.txt
-        lentbuddy Installer
-        -------------------
-        Installs lentbuddy into ~/.local/bin.
-        Make sure this directory is in your PATH.
-        Review this installer before running.
-        Press any key at the end to close.
-        EOF
+                    cat << 'EOF' > pkg/macos/lentbuddy/README.txt
+          lentbuddy Installer
+          -------------------
+          Installs lentbuddy into ~/.local/bin.
+          Make sure this directory is in your PATH.
+          Review this installer before running.
+          Press any key at the end to close.
+          EOF
 
-        cd pkg/macos
-        zip -r ../../lentbuddy-macos.zip lentbuddy
+          cd pkg/macos
+          zip -r ../../lentbuddy-macos.zip lentbuddy
 
-    - name: Package Windows
-      shell: bash
-      run: |
-        mkdir -p pkg/windows/lentbuddy
-        cp artifacts/lentbuddy-windows/lentbuddy.exe pkg/windows/lentbuddy/lentbuddy.exe
+      - name: Package Windows
+        shell: bash
+        run: |
+          mkdir -p pkg/windows/lentbuddy
+          cp artifacts/lentbuddy-windows/lentbuddy.exe pkg/windows/lentbuddy/lentbuddy.exe
 
-        cat << 'EOF' > pkg/windows/lentbuddy/install.bat
-        @echo off
-        set INSTALL_DIR=%LOCALAPPDATA%\Programs\lentbuddy
+          cat << 'EOF' > pkg/windows/lentbuddy/install.bat
+          @echo off
+          set INSTALL_DIR=%LOCALAPPDATA%\Programs\lentbuddy
 
-        mkdir "%INSTALL_DIR%" 2>nul
+          mkdir "%INSTALL_DIR%" 2>nul
 
-        echo Installing lentbuddy...
-        copy /Y lentbuddy.exe "%INSTALL_DIR%\lentbuddy.exe" >nul
+          echo Installing lentbuddy...
+          copy /Y lentbuddy.exe "%INSTALL_DIR%\lentbuddy.exe" >nul
 
-        :: Add to PATH only if not already present
-        echo %PATH% | find /I "%INSTALL_DIR%" >nul
-        if errorlevel 1 (
-            setx PATH "%PATH%;%INSTALL_DIR%"
-            echo Added to PATH.
-        ) else (
-            echo Already in PATH.
-        )
+          :: Add to PATH only if not already present
+          echo %PATH% | find /I "%INSTALL_DIR%" >nul
+          if errorlevel 1 (
+              setx PATH "%PATH%;%INSTALL_DIR%"
+              echo Added to PATH.
+          ) else (
+              echo Already in PATH.
+          )
 
-        echo.
-        echo Done! Restart your terminal.
-        pause
-        EOF
+          echo.
+          echo Done! Restart your terminal.
+          pause
+          EOF
 
-        cat << 'EOF' > pkg/windows/lentbuddy/README.txt
-        lentbuddy Installer
-        -------------------
-        Installs lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
-        and attempts to add it to your PATH. Review before running.
-        EOF
+                    cat << 'EOF' > pkg/windows/lentbuddy/README.txt
+          lentbuddy Installer
+          -------------------
+          Installs lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
+          and attempts to add it to your PATH. Review before running.
+          EOF
 
-        cd pkg/windows
-        zip -r ../../lentbuddy-windows.zip lentbuddy
+          cd pkg/windows
+          zip -r ../../lentbuddy-windows.zip lentbuddy
 
-    # -------- Signing step --------
-    - name: Set up Python for signing
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.x
+      - name: Set up Python for signing
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
 
-    - name: Install signing dependency
-      run: pip install pynacl
+      - name: Install signing dependency
+        run: pip install pynacl
 
-    - name: Sign artifacts
-      shell: python
-      env:
-        PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
-      run: |
-        import os, sys
-        from pathlib import Path
-        from nacl.signing import SigningKey
+      - name: Sign artifacts
+        shell: python
+        env:
+          PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          import os
+          from pathlib import Path
+          from nacl.signing import SigningKey
 
-        signing_key = SigningKey(bytes.fromhex(os.environ["PRIVATE_KEY"]))
+          signing_key = SigningKey(bytes.fromhex(os.environ["PRIVATE_KEY"]))
 
-        for zip_file in Path('.').glob('../../*.zip'):
-            with open(zip_file, 'rb') as f:
-                data = f.read()
-            sig = signing_key.sign(data).signature
-            with open(zip_file.with_suffix('.zip.sig'), 'wb') as f:
-                f.write(sig)
-                print(f"Created signature for {zip_file.name}")
+          for zip_file in Path('.').glob('../../*.zip'):
+              with open(zip_file, 'rb') as f:
+                  data = f.read()
+              sig = signing_key.sign(data).signature
+              with open(zip_file.with_suffix('.zip.sig'), 'wb') as f:
+                  f.write(sig)
+                  print(f"Created signature for {zip_file.name}")
 
-    - name: Upload packaged artifacts + signatures
-      uses: actions/upload-artifact@v4
-      with:
-        name: packaged
-        path: |
-          ../../lentbuddy-linux.zip
-          ../../lentbuddy-linux.zip.sig
-          ../../lentbuddy-macos.zip
-          ../../lentbuddy-macos.zip.sig
-          ../../lentbuddy-windows.zip
-          ../../lentbuddy-windows.zip.sig
+      - name: Upload packaged artifacts + signatures
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged
+          path: |
+            lentbuddy-linux.zip
+            lentbuddy-linux.zip.sig
+            lentbuddy-macos.zip
+            lentbuddy-macos.zip.sig
+            lentbuddy-windows.zip
+            lentbuddy-windows.zip.sig
 
   release:
     if: github.event_name == 'push'
@@ -233,34 +230,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Download packaged artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: packaged
-        path: release-files
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packaged
+          path: release-files
 
-    - name: Get latest release tag
-      id: get_latest_release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
-        echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+      - name: Get latest release tag
+        id: get_latest_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-    - name: Upload archives and signatures to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.latest_tag }}
-        file: release-files/*.zip
-        file_glob: true
-        overwrite: true
-
-    - name: Upload signature files
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.latest_tag }}
-        file: release-files/*.zip.sig
-        file_glob: true
-        overwrite: true
+      - name: Upload archives and signatures to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.latest_tag }}
+          file: release-files/*.{zip,zip.sig}
+          file_glob: true
+          overwrite: true
