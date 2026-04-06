@@ -254,6 +254,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ env.latest_tag }}
-        file: release-files/*.zip
+        file: release-files/*.{zip,zip.sig}
         file_glob: true
         overwrite: true
