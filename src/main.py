@@ -560,7 +560,7 @@ def personal_stuff_curses(stdscr, q_offset=0):
         }
     ]
 
-    spec = {"word_delays":[0.05], "char_delays":[0.02, 0.01], "br_delays":[0.09, 0.9, 0.15]}
+    spec = {"word_delays":[0.05], "char_delays":[0.01, 0.01], "br_delays":[0.09, 0.9, 0.15]}
 
     q_index = 0 + q_offset
 
