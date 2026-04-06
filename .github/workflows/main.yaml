@@ -41,27 +41,131 @@ jobs:
         fi
 
     - name: Build executable
-      run: pyinstaller --onefile --name lentbuddy-${{ env.os_name }} bootstrap.py
+      run: pyinstaller --onefile --name lentbuddy bootstrap.py
 
-    - name: Upload artifact
+    - name: Rename executable per OS
+      shell: bash
+      run: |
+        mkdir output
+        if [[ "${{ env.os_name }}" == "windows" ]]; then
+          cp dist/lentbuddy.exe output/lentbuddy.exe
+        else
+          cp dist/lentbuddy output/lentbuddy
+        fi
+
+    - name: Upload raw artifact
       uses: actions/upload-artifact@v4
       with:
         name: lentbuddy-${{ env.os_name }}
-        path: dist/lentbuddy-${{ env.os_name }}*
+        path: output/*
 
-  release:
-    if: github.event_name == 'push'
+  package:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Download artifacts
+    - name: Download all build artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+
+    # -------- Linux/macOS packaging --------
+    - name: Package Linux
+      run: |
+        mkdir -p pkg/linux/lentbuddy
+        cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
+
+        cat << 'EOF' > pkg/linux/lentbuddy/install.sh
+        #!/usr/bin/env bash
+        set -e
+
+        INSTALL_DIR="$HOME/.local/bin"
+        mkdir -p "$INSTALL_DIR"
+
+        echo "Installing lentbuddy..."
+        install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
+
+        echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        EOF
+
+        chmod +x pkg/linux/lentbuddy/install.sh
+
+        cd pkg/linux
+        zip -r ../../lentbuddy-linux.zip lentbuddy
+
+    - name: Package macOS
+      run: |
+        mkdir -p pkg/macos/lentbuddy
+        cp artifacts/lentbuddy-macos/lentbuddy pkg/macos/lentbuddy/lentbuddy
+
+        cat << 'EOF' > pkg/macos/lentbuddy/install.sh
+        #!/usr/bin/env bash
+        set -e
+
+        INSTALL_DIR="$HOME/.local/bin"
+        mkdir -p "$INSTALL_DIR"
+
+        echo "Installing lentbuddy..."
+        install -m 755 lentbuddy "$INSTALL_DIR/lentbuddy"
+
+        echo "Done! Make sure $INSTALL_DIR is in your PATH."
+        EOF
+
+        chmod +x pkg/macos/lentbuddy/install.sh
+
+        cd pkg/macos
+        zip -r ../../lentbuddy-macos.zip lentbuddy
+
+    # -------- Windows packaging --------
+    - name: Package Windows
+      run: |
+        mkdir -p pkg/windows/lentbuddy
+        cp artifacts/lentbuddy-windows/lentbuddy.exe pkg/windows/lentbuddy/lentbuddy.exe
+
+        cat << 'EOF' > pkg/windows/lentbuddy/install.bat
+        @echo off
+        set INSTALL_DIR=%LOCALAPPDATA%\Programs\lentbuddy
+
+        mkdir "%INSTALL_DIR%" 2>nul
+
+        echo Installing lentbuddy...
+        copy /Y lentbuddy.exe "%INSTALL_DIR%\lentbuddy.exe" >nul
+
+        :: Add to PATH only if not already present
+        echo %PATH% | find /I "%INSTALL_DIR%" >nul
+        if errorlevel 1 (
+            setx PATH "%PATH%;%INSTALL_DIR%"
+            echo Added to PATH.
+        ) else (
+            echo Already in PATH.
+        )
+
+        echo Done! Restart your terminal.
+        EOF
+
+        cd pkg/windows
+        zip -r ../../lentbuddy-windows.zip lentbuddy
+
+    - name: Upload packaged artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: packaged
+        path: |
+          lentbuddy-linux.zip
+          lentbuddy-macos.zip
+          lentbuddy-windows.zip
+
+  release:
+    if: github.event_name == 'push'
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download packaged artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: packaged
+        path: release-files
 
     - name: Get latest release tag
       id: get_latest_release
@@ -71,11 +175,11 @@ jobs:
         latest_tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
         echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-    - name: Upload artifacts to latest release
+    - name: Upload archives to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ env.latest_tag }}
-        file: artifacts/**/*
+        file: release-files/*.zip
         file_glob: true
         overwrite: true
