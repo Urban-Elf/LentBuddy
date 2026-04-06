@@ -152,17 +152,17 @@ def roll_screen_curses(stdscr, everyday_list):
 
     count = ls.get_instance().get_property("penance_count", -1)
 
-    if count < 1 or (count == 1 and RNG.random() < 0.15):
+    if count < 1 or (count == 1 and RNG.random() < 0.05):
         insisted = False
         set_insisted = False
         while True:
             if set_insisted:
                 insisted = True
             util.safe_clear_line(stdscr, 4, 0)
-            util.safe_addstr(stdscr, 4, 0, "Wait, how many penances did you want?" if count < 1 else f"Still alright with {count} penance? ['y' to skip]")
+            util.safe_addstr(stdscr, 4, 0, "Wait, how many penances did you want?" if count < 1 else f"Still good with {count} penance? Type a new count or 'y' to skip.")
             util.safe_clear_line(stdscr, 5, 0)
             s = util.curses_input(stdscr, "> ", 5, 0)
-            if s == "d" and not count < 1:
+            if s == "y" and not count < 1:
                 break
             try:
                 new_count = int(s)
