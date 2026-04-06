@@ -48,7 +48,12 @@ jobs:
       shell: bash
       run: |
         if [[ "${{ env.os_name }}" == "linux" ]]; then
-          pyinstaller --onefile --strip --upx $(which upx) --name lentbuddy bootstrap.py
+          if command -v upx >/dev/null 2>&1; then
+            UPX_PATH=$(which upx)
+            pyinstaller --onefile --strip --upx-dir "$UPX_PATH" --name lentbuddy bootstrap.py
+          else
+            pyinstaller --onefile --strip --name lentbuddy bootstrap.py
+          fi
         else
           pyinstaller --onefile --name lentbuddy bootstrap.py
         fi
@@ -86,7 +91,6 @@ jobs:
         mkdir -p pkg/linux/lentbuddy
         cp artifacts/lentbuddy-linux/lentbuddy pkg/linux/lentbuddy/lentbuddy
 
-        # Installer script with key wait
         cat << 'EOF' > pkg/linux/lentbuddy/install.sh
         #!/usr/bin/env bash
         set -e
@@ -102,15 +106,12 @@ jobs:
         EOF
         chmod +x pkg/linux/lentbuddy/install.sh
 
-        # README
         cat << 'EOF' > pkg/linux/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-
         This script will install lentbuddy into ~/.local/bin.
         Make sure this directory is in your PATH before running lentbuddy.
         Review this installer before running it.
-
         Press any key at the end to close the window.
         EOF
 
@@ -141,11 +142,9 @@ jobs:
         cat << 'EOF' > pkg/macos/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-
         This script will install lentbuddy into ~/.local/bin.
         Make sure this directory is in your PATH before running lentbuddy.
         Review this installer before running it.
-
         Press any key at the end to close the window.
         EOF
 
@@ -182,14 +181,11 @@ jobs:
         pause
         EOF
 
-        # README
         cat << 'EOF' > pkg/windows/lentbuddy/README.txt
         lentbuddy Installer
         -------------------
-
         This batch script will install lentbuddy into %LOCALAPPDATA%\Programs\lentbuddy
         and attempt to add it to your PATH. Review before running.
-
         The script pauses at the end so you can see the messages.
         EOF
 
