@@ -91,6 +91,12 @@ def shake_effect(stdscr, y, x, s, intensity=2, delay=0.03, iterations=10):
 
 ### HELPER ###
 
+def sanitize_dialogue_input(text: str):
+    text = text.replace("=", "\=").replace("#", "\#")
+    return text.strip()
+
+# TODO: sanitize_tokenized_input for the *, _, ... (see safe_addstr_tokenized)
+
 def curses_input(stdscr, prompt, y, x):
     try:
         curses.curs_set(1)
