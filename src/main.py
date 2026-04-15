@@ -49,6 +49,11 @@ def determine_penances(everyday_list, count):
         return int(h, 16)
 
     combined_list.sort(key=score)
+
+    # Sanitize
+    for i in range(len(combined_list)):
+        combined_list[i] = util.sanitize_dialogue_input(combined_list[i])
+
     return combined_list[:count]
 
 # ---------- Curses UI functions ----------
@@ -587,7 +592,7 @@ def personal_stuff_curses(stdscr, q_offset=0):
                 y += 1
             util.safe_addstr(stdscr, y, 0, " ") # Blank line
             y += 1
-        choice = util.curses_input(stdscr, "> ", y, 0)
+        choice = util.curses_input(stdscr, "> ", y, 0, sanitize_dialogue=True)
         if choice == "__KEY_RESIZE__":
             continue # Refresh
         else:
@@ -644,7 +649,8 @@ def personal_stuff_curses(stdscr, q_offset=0):
                     continue
                 ls.get_instance().set_property(q_data["ls_key"], choice_stripped)
                 util.safe_clear_line(stdscr, y)
-                util.safe_addstr_dialogue(stdscr, y, 0, q_data["success"] % choice_stripped, spec=spec)
+                sanitized_choice = util.sanitize_dialogue_input(choice_stripped)
+                util.safe_addstr_dialogue(stdscr, y, 0, q_data["success"] % sanitized_choice, spec=spec)
                 util.f_getch(stdscr)
                 q_index += 1
     
