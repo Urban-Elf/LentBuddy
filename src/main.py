@@ -684,8 +684,12 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
     am = dialogue.AnnoyanceManager(dialogue.NAV_ANNOYANCE_MESSAGES)
 
     while True:
-        penances_rolled = ls.get_instance().get_property("last_roll", "") == TODAY.isoformat()
+        penances_rolled = ls.get_instance().get_property("last_roll", "") == TODAY.isoformat() # rolled today
         reroll = ls.get_instance().get_property("reroll", False)
+
+        # Don't display "re-roll" if user hasn't even rolled yet
+        if not penances_rolled:
+            reroll = False
 
         stdscr.clear()
         util.safe_addstr(stdscr, 0, 0, "Welcome to LentBuddy (by Urban-Elf)! Choose an option.", curses.color_pair(3) | curses.A_BOLD)
@@ -702,10 +706,13 @@ def main_menu_curses(stdscr, everyday_list, show_welcome=False):
 
         if choice == "1":
             util.clear_effect(stdscr)
-            if penances_rolled:
+            if penances_rolled and not reroll:
                 penance_screen_curses(stdscr, everyday_list, ls.get_instance().get_property("penance_count", -1), view=True)
             else:
                 roll_screen_curses(stdscr, everyday_list)
+            # Reset reroll setting
+            if reroll:
+                ls.get_instance().set_property("reroll", False)
         elif choice == "2":
             util.clear_effect(stdscr)
             edit_lists_curses(stdscr, everyday_list)
